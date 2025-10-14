@@ -77,7 +77,9 @@ export default function App() {
   useEffect(() => {
     async function saveSections() {
       for (const section of sections) {
-        const sectionRef = doc(db, "sections", section.name);
+        // Generar un ID seguro reemplazando caracteres inválidos
+        const safeId = section.name?.replace(/[.#$/[\]]/g, "_") || crypto.randomUUID();
+        const sectionRef = doc(db, "sections", safeId);
         await setDoc(sectionRef, section, { merge: true });
       }
     }
