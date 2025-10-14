@@ -74,7 +74,7 @@ const TableView: React.FC<TableViewProps> = ({
 
   return (
     <>
-      <div className="table-container overflow-x-auto">
+      <div className="table-container overflow-x-auto rounded-lg border border-gray-700">
         <table className="min-w-full border border-gray-700 mb-4">
           <thead className="bg-gray-800">
             <tr>
