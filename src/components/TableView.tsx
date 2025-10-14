@@ -166,7 +166,6 @@ const TableView: React.FC<TableViewProps> = ({
                       🗑
                     </button>
                   </td>
-
                 </tr>
               );
             })}
