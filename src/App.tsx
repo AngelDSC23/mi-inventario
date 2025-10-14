@@ -202,11 +202,21 @@ export default function App() {
       {/* Sidebar: ocupa todo el ancho en móvil y columna fija en escritorio */}
       <aside className="w-full md:w-64 flex-shrink-0">
         <Sidebar
-          sections={sections}
-          currentSectionIndex={currentSectionIndex}
-          setCurrentSectionIndex={setCurrentSectionIndex}
-          onEditSections={() => setShowSectionEditor(true)}
-        />
+  sections={sections}
+  currentSectionIndex={currentSectionIndex}
+  setCurrentSectionIndex={setCurrentSectionIndex}
+  onEditSections={() => setShowSectionEditor(true)}
+  isOpen={sidebarOpen}
+  onClose={() => setSidebarOpen(false)}
+/>
+
+{/* Overlay al abrir Sidebar en móvil */}
+{sidebarOpen && (
+  <div
+    className="fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden"
+    onClick={() => setSidebarOpen(false)}
+  />
+)}
       </aside>
 
       {/* Contenido principal */}
