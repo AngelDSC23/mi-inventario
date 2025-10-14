@@ -2,17 +2,43 @@ import { exec } from "child_process";
 import fs from "fs";
 import path from "path";
 
-// Carpeta(s) a vigilar
-const watchFolders = ["src", "public"]; 
+// Carpetas a vigilar
+const watchFolders = ["src", "public"];
 
 // Archivos o carpetas a ignorar
 const ignoreList = ["node_modules", "dist", ".env", ".git"];
 
-console.log("Auto-push watcher mejorado iniciado...");
+// Debounce en milisegundos (tiempo mínimo entre commits)
+const DEBOUNCE_TIME = 3000; // 3 segundos
+
+let timeoutId = null;
+
+console.log("Auto-push watcher con debounce iniciado...");
 
 // Función para comprobar si un path está ignorado
 function isIgnored(filePath) {
   return ignoreList.some(ignored => filePath.includes(ignored));
+}
+
+// Función que hace commit y push
+function pushChanges() {
+  exec("git status --porcelain", (err, stdout) => {
+    if (err) {
+      console.error("Error revisando git:", err);
+      return;
+    }
+
+    if (stdout) {
+      const commitMessage = `auto-update: ${new Date().toLocaleTimeString()}`;
+      exec(`git add . && git commit -m "${commitMessage}" && git push origin main`, (err, out) => {
+        if (err) {
+          console.error("Error haciendo push:", err);
+        } else {
+          console.log("Cambios subidos a GitHub correctamente ✅");
+        }
+      });
+    }
+  });
 }
 
 // Vigilar todas las carpetas
@@ -25,24 +51,10 @@ watchFolders.forEach(folder => {
 
     console.log(`Cambio detectado en ${filename}`);
 
-    // Comprobar si hay cambios git
-    exec("git status --porcelain", (err, stdout) => {
-      if (err) {
-        console.error("Error revisando git:", err);
-        return;
-      }
-
-      if (stdout) {
-        // Hacer commit limpio
-        const commitMessage = `auto-update: ${new Date().toLocaleTimeString()}`;
-        exec(`git add . && git commit -m "${commitMessage}" && git push origin main`, (err, out) => {
-          if (err) {
-            console.error("Error haciendo push:", err);
-          } else {
-            console.log("Cambios subidos a GitHub correctamente ✅");
-          }
-        });
-      }
-    });
+    // Reiniciar el timer de debounce
+    if (timeoutId) clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => {
+      pushChanges();
+    }, DEBOUNCE_TIME);
   });
 });
