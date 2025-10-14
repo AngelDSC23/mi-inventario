@@ -153,20 +153,19 @@ const TableView: React.FC<TableViewProps> = ({
                     </div>
                   </td>
                   <td className="p-2 border flex gap-2 justify-center">
-  <button
-    onClick={() => setEditingId(isEditing ? null : e.id)}
-    className="flex items-center justify-center min-w-[36px] min-h-[36px] bg-yellow-500 text-white rounded-md hover:bg-yellow-600 active:scale-95 transition-transform"
-  >
-    🖉
-  </button>
-  <button
-    onClick={() => deleteEntry(e.id)}
-    className="flex items-center justify-center min-w-[36px] min-h-[36px] bg-red-600 text-white rounded-md hover:bg-red-700 active:scale-95 transition-transform"
-  >
-    🗑
-  </button>
-</td>
-
+                    <button
+                      onClick={() => setEditingId(isEditing ? null : e.id)}
+                      className="flex items-center justify-center min-w-[36px] min-h-[36px] bg-yellow-500 text-white rounded-md hover:bg-yellow-600 active:scale-95 transition-transform"
+                    >
+                      🖉
+                    </button>
+                    <button
+                      onClick={() => deleteEntry(e.id)}
+                      className="flex items-center justify-center min-w-[36px] min-h-[36px] bg-red-600 text-white rounded-md hover:bg-red-700 active:scale-95 transition-transform"
+                    >
+                      🗑
+                    </button>
+                  </td>
                 </tr>
               );
             })}
