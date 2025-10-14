@@ -120,3 +120,22 @@ tr:hover {
     font-size: 0.875rem;
   }
 }
+
+/* ---------- Contenedor base para móvil ---------- */
+.app-container {
+  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Evita doble scroll en móvil */
+body {
+  overflow-x: hidden;
+}
+
+/* Pequeños ajustes de padding en pantallas muy pequeñas */
+@media (max-width: 480px) {
+  .app-container {
+    padding: 0.75rem;
+  }
+}
