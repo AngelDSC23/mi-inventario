@@ -86,19 +86,21 @@ const CardView: React.FC<CardViewProps> = ({
             </div>
 
             <div className="flex gap-2 mt-3 justify-center">
-              <button
-                onClick={() => setEditingId(isEditing ? null : e.id)}
-                className="px-2 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600"
-              >
-                🖉
-              </button>
-              <button
-                onClick={() => deleteEntry(e.id)}
-                className="px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700"
-              >
-                🗑
-              </button>
-            </div>
+  <div className="flex gap-3 mt-3 justify-center">
+  <button
+    onClick={() => setEditingId(isEditing ? null : e.id)}
+    className="flex items-center justify-center min-w-[44px] min-h-[44px] px-3 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 active:scale-95 transition-transform"
+  >
+    🖉
+  </button>
+  <button
+    onClick={() => deleteEntry(e.id)}
+    className="flex items-center justify-center min-w-[44px] min-h-[44px] px-3 bg-red-600 text-white rounded-lg hover:bg-red-700 active:scale-95 transition-transform"
+  >
+    🗑
+  </button>
+</div>
+
           </div>
         );
       })}
