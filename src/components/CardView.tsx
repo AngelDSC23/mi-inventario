@@ -85,8 +85,7 @@ const CardView: React.FC<CardViewProps> = ({
               </div>
             </div>
 
-            <div className="flex gap-2 mt-3 justify-center">
-  <div className="flex gap-3 mt-3 justify-center">
+            <div className="flex gap-3 mt-3 justify-center">
   <button
     onClick={() => setEditingId(isEditing ? null : e.id)}
     className="flex items-center justify-center min-w-[44px] min-h-[44px] px-3 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 active:scale-95 transition-transform"
