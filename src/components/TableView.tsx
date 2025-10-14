@@ -175,7 +175,7 @@ const TableView: React.FC<TableViewProps> = ({
 
       <button
         onClick={addEntry}
-        className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded"
+        className="p-2 mt-2 w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-md active:scale-95 transition-transform"
       >
         Añadir entrada
       </button>
