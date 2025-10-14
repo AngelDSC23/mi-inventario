@@ -1,0 +1,122 @@
+/* ---------- Tailwind ---------- */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---------- Ajustes globales ---------- */
+html, body {
+  height: 100%;
+  background-color: #111827; /* gris-900 */
+  color: #f9fafb; /* gris-50 */
+  font-family: 'Inter', sans-serif;
+  color-scheme: light dark;
+}
+
+button {
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+button:active {
+  transform: scale(0.97);
+}
+
+input,
+select,
+textarea {
+  transition: border-color 0.2s, background-color 0.2s;
+  outline: none;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: #60a5fa; /* azul-400 */
+}
+
+/* ---------- Checkbox mejorado ---------- */
+input[type="checkbox"] {
+  appearance: none;
+  width: 1.15rem;
+  height: 1.15rem;
+  border: 2px solid #6b7280; /* gris-500 */
+  border-radius: 4px;
+  background-color: #1f2937; /* gris-800 */
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease-in-out;
+}
+
+input[type="checkbox"]:hover {
+  border-color: #93c5fd; /* azul-300 */
+}
+
+input[type="checkbox"]:checked {
+  background-color: #3b82f6; /* azul-500 */
+  border-color: #3b82f6;
+}
+
+input[type="checkbox"]:checked::after {
+  content: "✓";
+  font-size: 0.85rem;
+  color: white;
+  font-weight: bold;
+}
+
+/* ---------- Tablas ---------- */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th, td {
+  border: 1px solid #374151;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+
+th {
+  background-color: #1f2937;
+  font-weight: 600;
+}
+
+tr:hover {
+  background-color: #1e293b;
+}
+
+/* ---------- Scrollbar discreta solo en Sidebar ---------- */
+.sidebar-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+.sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+/* ---------- Responsivo ---------- */
+@media (max-width: 640px) {
+  table {
+    font-size: 0.9rem;
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  th, td {
+    padding: 0.4rem 0.5rem;
+  }
+
+  input[type="checkbox"] {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  button {
+    padding: 0.3rem 0.5rem;
+    font-size: 0.875rem;
+  }
+}

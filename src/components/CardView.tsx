@@ -1,0 +1,109 @@
+import React, { useState } from "react";
+import { Entry, Field } from "../types";
+
+interface CardViewProps {
+  entries: Entry[];
+  fields: Field[];
+  updateEntry: (id: number, field: string, value: any) => void;
+  deleteEntry: (id: number) => void;
+  filterType?: "todos" | "fisico" | "digital";
+}
+
+const CardView: React.FC<CardViewProps> = ({
+  entries,
+  fields,
+  updateEntry,
+  deleteEntry,
+  filterType = "todos",
+}) => {
+  const [editingId, setEditingId] = useState<number | null>(null);
+
+  const filteredEntries = entries.filter((e) => {
+    if (filterType === "fisico") return e.físico;
+    if (filterType === "digital") return e.digital;
+    return true;
+  });
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+      {filteredEntries.map((e) => {
+        const isEditing = editingId === e.id;
+        return (
+          <div key={e.id} className="border rounded p-4 bg-gray-800">
+            <div className="font-bold mb-2">ID: {e.id}</div>
+
+            {fields.map((f) => (
+              <div key={f.name} className="mb-1 flex justify-center items-center gap-2">
+                <label className="capitalize">{f.name}: </label>
+                {f.type === "checkbox" ? (
+                  <input
+                    type="checkbox"
+                    checked={!!e[f.name]}
+                    disabled={!isEditing}
+                    onChange={(ev) =>
+                      updateEntry(e.id, f.name, ev.target.checked)
+                    }
+                    className="w-5 h-5 accent-blue-500 cursor-pointer"
+                  />
+                ) : (
+                  <input
+                    disabled={!isEditing}
+                    value={e[f.name] || ""}
+                    onChange={(ev) =>
+                      updateEntry(e.id, f.name, ev.target.value)
+                    }
+                    className="w-full p-1 rounded bg-gray-700 border border-gray-600"
+                  />
+                )}
+              </div>
+            ))}
+
+            <div className="mt-2 flex gap-2 justify-center">
+              <div className="flex justify-center items-center gap-1">
+                <input
+                  type="checkbox"
+                  checked={e.digital}
+                  disabled={!isEditing}
+                  onChange={(ev) =>
+                    updateEntry(e.id, "digital", ev.target.checked)
+                  }
+                  className="w-5 h-5 accent-blue-500 cursor-pointer"
+                />
+                <label>Digital</label>
+              </div>
+              <div className="flex justify-center items-center gap-1">
+                <input
+                  type="checkbox"
+                  checked={e.físico}
+                  disabled={!isEditing}
+                  onChange={(ev) =>
+                    updateEntry(e.id, "físico", ev.target.checked)
+                  }
+                  className="w-5 h-5 accent-blue-500 cursor-pointer"
+                />
+                <label>Físico</label>
+              </div>
+            </div>
+
+            <div className="flex gap-2 mt-3 justify-center">
+              <button
+                onClick={() => setEditingId(isEditing ? null : e.id)}
+                className="px-2 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600"
+              >
+                🖉
+              </button>
+              <button
+                onClick={() => deleteEntry(e.id)}
+                className="px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700"
+              >
+                🗑
+              </button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+export default CardView;
