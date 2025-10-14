@@ -7,7 +7,6 @@ import TableView from "./components/TableView";
 import CardView from "./components/CardView";
 import { collection, doc, setDoc, getDocs } from "firebase/firestore";
 
-// Firebase
 import { db } from "./firebase-config";
 
 // --- Valores por defecto ---
