@@ -51,7 +51,7 @@ export default function App() {
   const [selectedFieldIndex, setSelectedFieldIndex] = useState<number | null>(null);
   const [typeFilter, setTypeFilter] = useState<"all" | "digital" | "físico">("all");
   const [editingId, setEditingId] = useState<number | null>(null);
-  
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const currentSection = sections[currentSectionIndex];
 
