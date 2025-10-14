@@ -213,12 +213,12 @@ export default function App() {
       <main className="flex-1 p-4 sm:p-6 overflow-auto app-container">
         <div className="flex flex-wrap justify-between items-center mb-4 gap-2">
           {/* Botón hamburger visible solo en móvil */}
-<button
-  className="md:hidden p-2 bg-gray-800 rounded hover:bg-gray-700"
-  onClick={() => setSidebarOpen(true)}
->
-  ☰
-</button>
+          <button
+            className="md:hidden p-2 bg-gray-800 rounded hover:bg-gray-700"
+            onClick={() => setSidebarOpen(true)}
+          >
+            ☰
+          </button>
 
           <h1 className="text-xl sm:text-2xl font-bold">{currentSection.name}</h1>
 
