@@ -99,7 +99,6 @@ const CardView: React.FC<CardViewProps> = ({
                 🗑
               </button>
             </div>
-
           </div>
         );
       })}
