@@ -49,12 +49,8 @@ export default function App() {
   const [showSectionEditor, setShowSectionEditor] = useState(false);
   const [viewMode, setViewMode] = useState<"table" | "card">("table");
   const [filter, setFilter] = useState<{ [key: string]: string }>({});
-  const [selectedFieldIndex, setSelectedFieldIndex] = useState<number | null>(
-    null
-  );
-  const [typeFilter, setTypeFilter] = useState<"all" | "digital" | "físico">(
-    "all"
-  );
+  const [selectedFieldIndex, setSelectedFieldIndex] = useState<number | null>(null);
+  const [typeFilter, setTypeFilter] = useState<"all" | "digital" | "físico">("all");
   const [editingId, setEditingId] = useState<number | null>(null);
 
   const currentSection = sections[currentSectionIndex];
@@ -66,73 +62,55 @@ export default function App() {
       if (!querySnapshot.empty) {
         const loadedSections = querySnapshot.docs.map((doc) => doc.data());
         setSections(loadedSections as Section[]);
-      } else {
-        setSections(defaultSections);
       }
     }
     fetchSections();
   }, []);
 
-  // --- Guardar cambios en Firestore al actualizar secciones ---
-  useEffect(() => {
-    async function saveSections() {
-      for (const section of sections) {
-        // Generar un ID seguro reemplazando caracteres inválidos
-        const safeId = section.name?.replace(/[.#$/[\]]/g, "_") || crypto.randomUUID();
-        const sectionRef = doc(db, "sections", safeId);
-        await setDoc(sectionRef, section, { merge: true });
-      }
-    }
-    saveSections();
-  }, [sections]);
+  // --- Función para guardar una sección específica ---
+  const saveSection = async (section: Section) => {
+    const safeId = section.name?.replace(/[.#$/[\]]/g, "_") || crypto.randomUUID();
+    const sectionRef = doc(db, "sections", safeId);
+    await setDoc(sectionRef, section, { merge: true });
+  };
 
   // --- Entradas ---
   const addEntry = async () => {
-    const nextId =
-      currentSection.entries.length > 0
-        ? currentSection.entries[currentSection.entries.length - 1].id + 1
-        : 1;
+    const nextId = currentSection.entries.length > 0
+      ? currentSection.entries[currentSection.entries.length - 1].id + 1
+      : 1;
 
     const newEntry: Entry = { id: nextId, digital: false, físico: false };
     currentSection.fields.forEach((f) => {
       newEntry[f.name] = f.type === "checkbox" ? false : "";
     });
+
     const updatedSections = [...sections];
     updatedSections[currentSectionIndex].entries.push(newEntry);
     setSections(updatedSections);
     setEditingId(nextId);
 
-    // Guardar inmediatamente en Firestore
-    const sectionRef = doc(db, "sections", currentSection.name);
-    await setDoc(sectionRef, updatedSections[currentSectionIndex], { merge: true });
+    await saveSection(updatedSections[currentSectionIndex]);
   };
 
   const updateEntry = async (id: number, field: string, value: any) => {
     const updatedSections = [...sections];
-    const idx = updatedSections[currentSectionIndex].entries.findIndex(
-      (e) => e.id === id
-    );
+    const idx = updatedSections[currentSectionIndex].entries.findIndex((e) => e.id === id);
     if (idx > -1) {
       updatedSections[currentSectionIndex].entries[idx][field] = value;
       setSections(updatedSections);
 
-      // Guardar inmediatamente en Firestore
-      const sectionRef = doc(db, "sections", currentSection.name);
-      await setDoc(sectionRef, updatedSections[currentSectionIndex], { merge: true });
+      await saveSection(updatedSections[currentSectionIndex]);
     }
   };
 
   const deleteEntry = async (id: number) => {
     const updatedSections = [...sections];
-    updatedSections[currentSectionIndex].entries = updatedSections[
-      currentSectionIndex
-    ].entries.filter((e) => e.id !== id);
+    updatedSections[currentSectionIndex].entries = updatedSections[currentSectionIndex].entries.filter((e) => e.id !== id);
     setSections(updatedSections);
     if (editingId === id) setEditingId(null);
 
-    // Guardar inmediatamente en Firestore
-    const sectionRef = doc(db, "sections", currentSection.name);
-    await setDoc(sectionRef, updatedSections[currentSectionIndex], { merge: true });
+    await saveSection(updatedSections[currentSectionIndex]);
   };
 
   // --- Columnas ---
@@ -143,6 +121,7 @@ export default function App() {
     if (!section.fields.some((f) => f.name === field.name)) {
       section.fields.push(field);
       setSections(updatedSections);
+      saveSection(updatedSections[currentSectionIndex]);
     }
   };
 
@@ -151,6 +130,7 @@ export default function App() {
     const section = updatedSections[currentSectionIndex];
     section.fields[index] = { ...section.fields[index], ...updates };
     setSections(updatedSections);
+    saveSection(updatedSections[currentSectionIndex]);
   };
 
   const deleteField = () => {
@@ -162,6 +142,7 @@ export default function App() {
     section.entries.forEach((entry) => delete entry[field.name]);
     setSelectedFieldIndex(null);
     setSections(updatedSections);
+    saveSection(updatedSections[currentSectionIndex]);
   };
 
   const moveField = (direction: "left" | "right") => {
@@ -171,12 +152,10 @@ export default function App() {
     const index = selectedFieldIndex;
     const newIndex = direction === "left" ? index - 1 : index + 1;
     if (newIndex < 0 || newIndex >= section.fields.length) return;
-    [section.fields[index], section.fields[newIndex]] = [
-      section.fields[newIndex],
-      section.fields[index],
-    ];
+    [section.fields[index], section.fields[newIndex]] = [section.fields[newIndex], section.fields[index]];
     setSelectedFieldIndex(newIndex);
     setSections(updatedSections);
+    saveSection(updatedSections[currentSectionIndex]);
   };
 
   // --- Apartados ---
@@ -191,24 +170,20 @@ export default function App() {
       },
     ];
     setSections(updated);
+    saveSection(updated[updated.length - 1]);
   };
 
   const deleteSection = (index: number) => {
     const updated = [...sections];
     updated.splice(index, 1);
     setSections(updated);
-    if (currentSectionIndex >= updated.length)
-      setCurrentSectionIndex(updated.length - 1);
+    if (currentSectionIndex >= updated.length) setCurrentSectionIndex(updated.length - 1);
   };
 
   // --- Filtrado por texto y tipo ---
   const filteredEntries = currentSection.entries.filter((entry) => {
-    const matchesText = Object.entries(filter).every(
-      ([key, value]) =>
-        !value ||
-        String(entry[key] || "")
-          .toLowerCase()
-          .includes(value.toLowerCase())
+    const matchesText = Object.entries(filter).every(([key, value]) =>
+      !value || String(entry[key] || "").toLowerCase().includes(value.toLowerCase())
     );
 
     const matchesType =
@@ -237,9 +212,7 @@ export default function App() {
           <div className="flex flex-wrap gap-2 items-center">
             <select
               value={typeFilter}
-              onChange={(e) =>
-                setTypeFilter(e.target.value as "all" | "digital" | "físico")
-              }
+              onChange={(e) => setTypeFilter(e.target.value as "all" | "digital" | "físico")}
               className="p-2 bg-gray-800 border border-gray-600 rounded"
             >
               <option value="all">Todos</option>
@@ -249,9 +222,7 @@ export default function App() {
 
             <button
               className="p-2 bg-indigo-600 rounded hover:bg-indigo-700"
-              onClick={() =>
-                setViewMode((prev) => (prev === "table" ? "card" : "table"))
-              }
+              onClick={() => setViewMode((prev) => (prev === "table" ? "card" : "table"))}
             >
               {viewMode === "table" ? "Ver tarjetas" : "Ver tabla"}
             </button>
@@ -283,9 +254,7 @@ export default function App() {
                   key={f.name}
                   placeholder={`Filtrar por ${f.name}`}
                   value={filter[f.name] || ""}
-                  onChange={(e) =>
-                    setFilter({ ...filter, [f.name]: e.target.value })
-                  }
+                  onChange={(e) => setFilter({ ...filter, [f.name]: e.target.value })}
                   className="p-1 rounded bg-gray-700 border border-gray-600"
                 />
               ))}
