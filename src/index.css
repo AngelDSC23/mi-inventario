@@ -140,3 +140,9 @@ body {
   }
 }
 
+/* ---------- Overlay Sidebar móvil ---------- */
+@media (max-width: 768px) {
+  .sidebar-overlay {
+    transition: background-color 0.3s ease-in-out;
+  }
+}
