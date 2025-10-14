@@ -197,89 +197,93 @@ export default function App() {
 
   // --- Render principal ---
   return (
-    <div className="flex min-h-screen bg-gray-900 text-gray-100">
+  <div className="flex flex-col md:flex-row min-h-screen bg-gray-900 text-gray-100 overflow-hidden">
+    {/* Sidebar: ocupa todo el ancho en móvil y columna fija en escritorio */}
+    <aside className="w-full md:w-64 flex-shrink-0">
       <Sidebar
         sections={sections}
         currentSectionIndex={currentSectionIndex}
         setCurrentSectionIndex={setCurrentSectionIndex}
         onEditSections={() => setShowSectionEditor(true)}
       />
+    </aside>
 
-      <main className="flex-1 p-6 overflow-auto">
-        <div className="flex flex-wrap justify-between items-center mb-4 gap-2">
-          <h1 className="text-2xl font-bold">{currentSection.name}</h1>
-          <div className="flex flex-wrap gap-2 items-center">
-            <select
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value as "all" | "digital" | "físico")}
-              className="p-2 bg-gray-800 border border-gray-600 rounded"
-            >
-              <option value="all">Todos</option>
-              <option value="digital">Digital</option>
-              <option value="físico">Físico</option>
-            </select>
+    {/* Contenido principal */}
+    <main className="flex-1 p-4 sm:p-6 overflow-auto app-container">
+      <div className="flex flex-wrap justify-between items-center mb-4 gap-2">
+        <h1 className="text-xl sm:text-2xl font-bold">{currentSection.name}</h1>
 
-            <button
-              className="p-2 bg-indigo-600 rounded hover:bg-indigo-700"
-              onClick={() => setViewMode((prev) => (prev === "table" ? "card" : "table"))}
-            >
-              {viewMode === "table" ? "Ver tarjetas" : "Ver tabla"}
-            </button>
+        <div className="flex flex-wrap gap-2 items-center">
+          <select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value as "all" | "digital" | "físico")}
+            className="p-2 bg-gray-800 border border-gray-600 rounded text-sm sm:text-base"
+          >
+            <option value="all">Todos</option>
+            <option value="digital">Digital</option>
+            <option value="físico">Físico</option>
+          </select>
 
-            <button
-              className="p-2 bg-blue-600 rounded hover:bg-blue-700"
-              onClick={() => setShowSettings(!showSettings)}
-            >
-              {showSettings ? "Cerrar ajustes" : "Ajustes"}
-            </button>
-          </div>
+          <button
+            className="p-2 bg-indigo-600 rounded hover:bg-indigo-700 text-sm sm:text-base"
+            onClick={() => setViewMode((prev) => (prev === "table" ? "card" : "table"))}
+          >
+            {viewMode === "table" ? "Ver tarjetas" : "Ver tabla"}
+          </button>
+
+          <button
+            className="p-2 bg-blue-600 rounded hover:bg-blue-700 text-sm sm:text-base"
+            onClick={() => setShowSettings(!showSettings)}
+          >
+            {showSettings ? "Cerrar ajustes" : "Ajustes"}
+          </button>
         </div>
+      </div>
 
-        {showSettings ? (
-          <SettingsPanel
-            currentSection={currentSection}
-            selectedFieldIndex={selectedFieldIndex}
-            setSelectedFieldIndex={setSelectedFieldIndex}
-            addField={addField}
-            deleteField={deleteField}
-            moveField={moveField}
-            updateField={updateField}
-          />
-        ) : (
-          <>
-            <div className="mb-4 flex flex-wrap gap-2">
-              {currentSection.fields.map((f) => (
-                <input
-                  key={f.name}
-                  placeholder={`Filtrar por ${f.name}`}
-                  value={filter[f.name] || ""}
-                  onChange={(e) => setFilter({ ...filter, [f.name]: e.target.value })}
-                  className="p-1 rounded bg-gray-700 border border-gray-600"
-                />
-              ))}
-            </div>
+      {showSettings ? (
+        <SettingsPanel
+          currentSection={currentSection}
+          selectedFieldIndex={selectedFieldIndex}
+          setSelectedFieldIndex={setSelectedFieldIndex}
+          addField={addField}
+          deleteField={deleteField}
+          moveField={moveField}
+          updateField={updateField}
+        />
+      ) : (
+        <>
+          <div className="mb-4 flex flex-wrap gap-2">
+            {currentSection.fields.map((f) => (
+              <input
+                key={f.name}
+                placeholder={`Filtrar por ${f.name}`}
+                value={filter[f.name] || ""}
+                onChange={(e) => setFilter({ ...filter, [f.name]: e.target.value })}
+                className="p-1 sm:p-2 rounded bg-gray-700 border border-gray-600 text-sm sm:text-base"
+              />
+            ))}
+          </div>
 
-            {viewMode === "table" ? (
-              <TableView
-                entries={filteredEntries}
-                fields={currentSection.fields}
-                updateEntry={updateEntry}
-                deleteEntry={deleteEntry}
-                addEntry={addEntry}
-                editingId={editingId}
-                setEditingId={setEditingId}
-              />
-            ) : (
-              <CardView
-                entries={filteredEntries}
-                fields={currentSection.fields}
-                updateEntry={updateEntry}
-                deleteEntry={deleteEntry}
-              />
-            )}
-          </>
-        )}
-      </main>
+          {viewMode === "table" ? (
+            <TableView
+              entries={filteredEntries}
+              fields={currentSection.fields}
+              updateEntry={updateEntry}
+              deleteEntry={deleteEntry}
+              addEntry={addEntry}
+              editingId={editingId}
+              setEditingId={setEditingId}
+            />
+          ) : (
+            <CardView
+              entries={filteredEntries}
+              fields={currentSection.fields}
+              updateEntry={updateEntry}
+              deleteEntry={deleteEntry}
+            />
+          )}
+        </>
+      )}
 
       {showSectionEditor && (
         <SectionEditorModal
@@ -289,6 +293,8 @@ export default function App() {
           onClose={() => setShowSectionEditor(false)}
         />
       )}
-    </div>
-  );
+    </main>
+  </div>
+);
+
 }
