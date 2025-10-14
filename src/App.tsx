@@ -5,6 +5,10 @@ import SectionEditorModal from "./components/SectionEditorModal";
 import SettingsPanel from "./components/SettingsPanel";
 import TableView from "./components/TableView";
 import CardView from "./components/CardView";
+import { collection, doc, setDoc, getDocs } from "firebase/firestore";
+
+// Firebase
+import { db } from "./firebase-config"; // ← importar tu configuración
 
 // --- Valores por defecto ---
 const defaultSections: Section[] = [
@@ -39,24 +43,47 @@ const defaultSections: Section[] = [
 ];
 
 export default function App() {
-  const [sections, setSections] = useState<Section[]>(() => {
-    const saved = localStorage.getItem("sections");
-    return saved ? JSON.parse(saved) : defaultSections;
-  });
+  const [sections, setSections] = useState<Section[]>(defaultSections);
   const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
   const [showSectionEditor, setShowSectionEditor] = useState(false);
-  const [viewMode, setViewMode] = useState<"table" | "card">("table"); // ← vista dinámica
+  const [viewMode, setViewMode] = useState<"table" | "card">("table");
   const [filter, setFilter] = useState<{ [key: string]: string }>({});
-  const [selectedFieldIndex, setSelectedFieldIndex] = useState<number | null>(null);
-  const [typeFilter, setTypeFilter] = useState<"all" | "digital" | "físico">("all");
+  const [selectedFieldIndex, setSelectedFieldIndex] = useState<number | null>(
+    null
+  );
+  const [typeFilter, setTypeFilter] = useState<"all" | "digital" | "físico">(
+    "all"
+  );
   const [editingId, setEditingId] = useState<number | null>(null);
 
   const currentSection = sections[currentSectionIndex];
 
-  // --- Sincronización con almacenamiento local ---
+  // --- Cargar datos desde Firestore al inicio ---
   useEffect(() => {
-    localStorage.setItem("sections", JSON.stringify(sections));
+    async function fetchSections() {
+      const querySnapshot = await getDocs(collection(db, "sections"));
+      if (!querySnapshot.empty) {
+        const loadedSections = querySnapshot.docs.map((doc) => doc.data());
+        setSections(loadedSections as Section[]);
+      } else {
+        setSections(defaultSections);
+      }
+    }
+    fetchSections();
+  }, []);
+
+  // Guardar cambios en Firestore de forma limpia
+  useEffect(() => {
+    async function saveSections() {
+      for (const section of sections) {
+        const sectionRef = doc(db, "sections", section.name); 
+        // 'section.name' actúa como ID único
+        await setDoc(sectionRef, section, { merge: true });
+      }
+    }
+
+    saveSections();
   }, [sections]);
 
   // --- Entradas ---
