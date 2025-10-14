@@ -29,7 +29,7 @@ const CardView: React.FC<CardViewProps> = ({
       {filteredEntries.map((e) => {
         const isEditing = editingId === e.id;
         return (
-          <div key={e.id} className="border rounded p-4 bg-gray-800">
+          <div key={e.id} className="border rounded-xl p-3 sm:p-4 bg-gray-800 shadow-md hover:shadow-lg transition-shadow duration-200">
             <div className="font-bold mb-2">ID: {e.id}</div>
 
             {fields.map((f) => (
