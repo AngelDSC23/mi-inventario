@@ -8,7 +8,7 @@ import CardView from "./components/CardView";
 import { collection, doc, setDoc, getDocs } from "firebase/firestore";
 
 // Firebase
-import { db } from "./firebase-config"; // ← importar tu configuración
+import { db } from "./firebase-config";
 
 // --- Valores por defecto ---
 const defaultSections: Section[] = [
@@ -73,21 +73,19 @@ export default function App() {
     fetchSections();
   }, []);
 
-  // Guardar cambios en Firestore de forma limpia
+  // --- Guardar cambios en Firestore al actualizar secciones ---
   useEffect(() => {
     async function saveSections() {
       for (const section of sections) {
-        const sectionRef = doc(db, "sections", section.name); 
-        // 'section.name' actúa como ID único
+        const sectionRef = doc(db, "sections", section.name);
         await setDoc(sectionRef, section, { merge: true });
       }
     }
-
     saveSections();
   }, [sections]);
 
   // --- Entradas ---
-  const addEntry = () => {
+  const addEntry = async () => {
     const nextId =
       currentSection.entries.length > 0
         ? currentSection.entries[currentSection.entries.length - 1].id + 1
@@ -100,11 +98,14 @@ export default function App() {
     const updatedSections = [...sections];
     updatedSections[currentSectionIndex].entries.push(newEntry);
     setSections(updatedSections);
-
     setEditingId(nextId);
+
+    // Guardar inmediatamente en Firestore
+    const sectionRef = doc(db, "sections", currentSection.name);
+    await setDoc(sectionRef, updatedSections[currentSectionIndex], { merge: true });
   };
 
-  const updateEntry = (id: number, field: string, value: any) => {
+  const updateEntry = async (id: number, field: string, value: any) => {
     const updatedSections = [...sections];
     const idx = updatedSections[currentSectionIndex].entries.findIndex(
       (e) => e.id === id
@@ -112,16 +113,24 @@ export default function App() {
     if (idx > -1) {
       updatedSections[currentSectionIndex].entries[idx][field] = value;
       setSections(updatedSections);
+
+      // Guardar inmediatamente en Firestore
+      const sectionRef = doc(db, "sections", currentSection.name);
+      await setDoc(sectionRef, updatedSections[currentSectionIndex], { merge: true });
     }
   };
 
-  const deleteEntry = (id: number) => {
+  const deleteEntry = async (id: number) => {
     const updatedSections = [...sections];
     updatedSections[currentSectionIndex].entries = updatedSections[
       currentSectionIndex
     ].entries.filter((e) => e.id !== id);
     setSections(updatedSections);
     if (editingId === id) setEditingId(null);
+
+    // Guardar inmediatamente en Firestore
+    const sectionRef = doc(db, "sections", currentSection.name);
+    await setDoc(sectionRef, updatedSections[currentSectionIndex], { merge: true });
   };
 
   // --- Columnas ---
@@ -236,7 +245,6 @@ export default function App() {
               <option value="físico">Físico</option>
             </select>
 
-            {/* ← Nuevo botón alternar vista */}
             <button
               className="p-2 bg-indigo-600 rounded hover:bg-indigo-700"
               onClick={() =>
@@ -267,7 +275,6 @@ export default function App() {
           />
         ) : (
           <>
-            {/* Campos de filtro */}
             <div className="mb-4 flex flex-wrap gap-2">
               {currentSection.fields.map((f) => (
                 <input
@@ -282,7 +289,6 @@ export default function App() {
               ))}
             </div>
 
-            {/* Vistas dinámicas */}
             {viewMode === "table" ? (
               <TableView
                 entries={filteredEntries}
