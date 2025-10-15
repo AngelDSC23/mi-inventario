@@ -9,7 +9,7 @@ import { collection, doc, setDoc, getDocs } from "firebase/firestore";
 
 import { db } from "./firebase-config";
 
-// --- Valores por defecto ---
+// --- Valores por defecto 
 const defaultSections: Section[] = [
   {
     name: "Libros",
