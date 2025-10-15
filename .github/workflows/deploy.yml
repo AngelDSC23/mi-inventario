@@ -1,0 +1,37 @@
+name: Deploy to GitHub Pages
+
+# Ejecutar acción cuando hay push en main
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Clonar el repositorio
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # 2. Instalar Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '22'  # compatible con tu versión actual de Node.js
+
+      # 3. Instalar dependencias
+      - name: Install dependencies
+        run: npm ci
+
+      # 4. Ejecutar build de Vite
+      - name: Build
+        run: npm run build
+
+      # 5. Publicar /dist en gh-pages
+      - name: Deploy to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
