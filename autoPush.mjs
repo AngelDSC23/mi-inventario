@@ -37,11 +37,6 @@ function shouldDeploy(filePath) {
 function pushChanges(filePath) {
   const repoRoot = process.cwd();
 
-  // En Windows, revisar longitud de la ruta
-  if (isWindows && repoRoot.length > 50) { // Ajustable según conveniencia
-    console.warn("⚠️ Ruta del proyecto larga en Windows, deploy a gh-pages puede fallar (ENAMETOOLONG). Considera moverlo a una ruta más corta.");
-  }
-
   exec("git status --porcelain", { cwd: repoRoot }, (err, stdout, stderr) => {
     if (err) {
       console.error("Error revisando git:", err, stderr);
@@ -63,8 +58,9 @@ function pushChanges(filePath) {
         console.log("Cambios subidos a GitHub correctamente ✅");
 
         if (shouldDeploy(filePath)) {
-          if (isWindows && repoRoot.length > 50) {
-            console.log("Cambio detectado en archivo crítico, pero deploy se omite en Windows por ruta larga ⚠️");
+          if (isWindows) {
+            console.warn("⚠️ Cambio crítico detectado, pero el deploy a gh-pages se omite en Windows para evitar ENAMETOOLONG.");
+            console.log("👉 Para publicar la web, ejecuta manualmente: npm run build && npx gh-pages -d dist");
           } else {
             console.log("Archivo crítico detectado, iniciando build + deploy...");
             buildAndDeploy();
