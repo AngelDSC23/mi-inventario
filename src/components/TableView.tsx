@@ -7,7 +7,6 @@ interface TableViewProps {
   updateEntry: (id: number, field: string, value: any) => void;
   deleteEntry: (id: number) => void;
   addEntry: () => void;
-  filterType?: "todos" | "fisico" | "digital";
   editingId: number | null;
   setEditingId: (id: number | null) => void;
 }
@@ -18,16 +17,20 @@ const TableView: React.FC<TableViewProps> = ({
   updateEntry,
   deleteEntry,
   addEntry,
-  filterType = "todos",
   editingId,
   setEditingId,
 }) => {
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const [filterField, setFilterField] = useState<string>("todos");
 
-  const filteredEntries = entries.filter((e) => {
-    if (filterType === "fisico") return e.físico;
-    if (filterType === "digital") return e.digital;
-    return true;
+  // ✅ Genera automáticamente las opciones de filtro según los campos tipo checkbox
+  const checkboxFields = fields.filter((f) => f.type === "checkbox");
+  const filterOptions = ["todos", ...checkboxFields.map((f) => f.name)];
+
+  // ✅ Filtrado dinámico
+  const filteredEntries = entries.filter((entry) => {
+    if (filterField === "todos") return true;
+    return !!entry[filterField];
   });
 
   const handleKeyNavigation = (
@@ -70,10 +73,27 @@ const TableView: React.FC<TableViewProps> = ({
         }
       }
     }
-  }, [editingId]);
+  }, [editingId, filteredEntries]);
 
   return (
     <>
+      {/* 🔍 Área de filtros */}
+      <div className="flex flex-wrap gap-3 items-center mb-4">
+        <label className="font-semibold">Filtrar por:</label>
+        <select
+          value={filterField}
+          onChange={(e) => setFilterField(e.target.value)}
+          className="bg-gray-800 border border-gray-600 text-white rounded p-1"
+        >
+          {filterOptions.map((opt) => (
+            <option key={opt} value={opt}>
+              {opt === "todos" ? "Todos" : opt.charAt(0).toUpperCase() + opt.slice(1)}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* 🧾 Tabla de registros */}
       <div className="table-container overflow-x-auto rounded-lg border border-gray-700">
         <table className="min-w-full border border-gray-700 mb-4">
           <thead className="bg-gray-800">
@@ -82,17 +102,17 @@ const TableView: React.FC<TableViewProps> = ({
               {fields.map((f) => (
                 <th key={f.name} className="p-2 border capitalize">{f.name}</th>
               ))}
-              <th className="p-2 border">Digital</th>
-              <th className="p-2 border">Físico</th>
               <th className="p-2 border">Acciones</th>
             </tr>
           </thead>
+
           <tbody>
             {filteredEntries.map((e, entryIndex) => {
               const isEditing = editingId === e.id;
               return (
                 <tr key={e.id} className="hover:bg-gray-800">
                   <td className="p-2 border">{e.id}</td>
+
                   {fields.map((f, fieldIndex) => {
                     const refKey = `${entryIndex}-${fieldIndex}`;
                     const value = e[f.name];
@@ -101,17 +121,15 @@ const TableView: React.FC<TableViewProps> = ({
                       <td key={f.name} className="p-2 border">
                         <div className="flex justify-center items-center h-full">
                           {f.type === "checkbox" ? (
-                            <select
+                            <input
+                              type="checkbox"
+                              checked={!!value}
                               disabled={!isEditing}
-                              value={value ? "true" : "false"}
                               onChange={(ev) =>
-                                updateEntry(e.id, f.name, ev.target.value === "true")
+                                updateEntry(e.id, f.name, ev.target.checked)
                               }
-                              className="w-full p-1 rounded bg-gray-700 border border-gray-600 cursor-pointer"
-                            >
-                              <option value="true">Sí</option>
-                              <option value="false">No</option>
-                            </select>
+                              className="w-5 h-5 accent-blue-500 cursor-pointer"
+                            />
                           ) : (
                             <input
                               ref={(el) => { inputRefs.current[refKey] = el; }}
@@ -130,34 +148,6 @@ const TableView: React.FC<TableViewProps> = ({
                       </td>
                     );
                   })}
-
-                  <td className="p-2 border">
-                    <div className="flex justify-center items-center h-full">
-                      <input
-                        type="checkbox"
-                        checked={e.digital}
-                        disabled={!isEditing}
-                        onChange={(ev) =>
-                          updateEntry(e.id, "digital", ev.target.checked)
-                        }
-                        className="w-5 h-5 accent-blue-500 cursor-pointer"
-                      />
-                    </div>
-                  </td>
-
-                  <td className="p-2 border">
-                    <div className="flex justify-center items-center h-full">
-                      <input
-                        type="checkbox"
-                        checked={e.físico}
-                        disabled={!isEditing}
-                        onChange={(ev) =>
-                          updateEntry(e.id, "físico", ev.target.checked)
-                        }
-                        className="w-5 h-5 accent-blue-500 cursor-pointer"
-                      />
-                    </div>
-                  </td>
 
                   <td className="p-2 border flex gap-2 justify-center">
                     <button

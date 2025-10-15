@@ -32,36 +32,31 @@ const CardView: React.FC<CardViewProps> = ({
           <div key={e.id} className="border rounded-xl p-3 sm:p-4 bg-gray-800 shadow-md hover:shadow-lg transition-shadow duration-200">
             <div className="font-bold mb-2">ID: {e.id}</div>
 
-            {fields.map((f) => {
-              const value = e[f.name];
-              return (
-                <div key={f.name} className="mb-1 flex justify-center items-center gap-2">
-                  <label className="capitalize">{f.name}: </label>
-                  {f.type === "checkbox" ? (
-                    <select
-                      disabled={!isEditing}
-                      value={value ? "true" : "false"}
-                      onChange={(ev) =>
-                        updateEntry(e.id, f.name, ev.target.value === "true")
-                      }
-                      className="w-full p-1 rounded bg-gray-700 border border-gray-600 cursor-pointer"
-                    >
-                      <option value="true">Sí</option>
-                      <option value="false">No</option>
-                    </select>
-                  ) : (
-                    <input
-                      disabled={!isEditing}
-                      value={value || ""}
-                      onChange={(ev) =>
-                        updateEntry(e.id, f.name, ev.target.value)
-                      }
-                      className="w-full p-1 rounded bg-gray-700 border border-gray-600"
-                    />
-                  )}
-                </div>
-              );
-            })}
+            {fields.map((f) => (
+              <div key={f.name} className="mb-1 flex justify-center items-center gap-2">
+                <label className="capitalize">{f.name}: </label>
+                {f.type === "checkbox" ? (
+                  <input
+                    type="checkbox"
+                    checked={!!e[f.name]}
+                    disabled={!isEditing}
+                    onChange={(ev) =>
+                      updateEntry(e.id, f.name, ev.target.checked)
+                    }
+                    className="w-5 h-5 accent-blue-500 cursor-pointer"
+                  />
+                ) : (
+                  <input
+                    disabled={!isEditing}
+                    value={e[f.name] || ""}
+                    onChange={(ev) =>
+                      updateEntry(e.id, f.name, ev.target.value)
+                    }
+                    className="w-full p-1 rounded bg-gray-700 border border-gray-600"
+                  />
+                )}
+              </div>
+            ))}
 
             <div className="mt-2 flex gap-2 justify-center">
               <div className="flex justify-center items-center gap-1">
