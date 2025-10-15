@@ -113,7 +113,7 @@ export default function App() {
     await saveSection(updatedSections[currentSectionIndex]);
   };
 
-  // --- Columnas ---
+  // --- Columnas
   const addField = (field: Field) => {
     if (!field.name.trim()) return;
     const updatedSections = [...sections];
