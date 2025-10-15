@@ -6,7 +6,6 @@ import SettingsPanel from "./components/SettingsPanel";
 import TableView from "./components/TableView";
 import CardView from "./components/CardView";
 import { collection, doc, setDoc, getDocs } from "firebase/firestore";
-
 import { db } from "./firebase-config";
 
 // --- Valores por defecto 
@@ -18,6 +17,8 @@ const defaultSections: Section[] = [
       { name: "autor", type: "text" as const },
       { name: "año", type: "text" as const },
       { name: "edición", type: "text" as const },
+      { name: "digital", type: "checkbox" as const },
+      { name: "físico", type: "checkbox" as const },
     ],
     entries: [],
   },
@@ -27,6 +28,8 @@ const defaultSections: Section[] = [
       { name: "titulo", type: "text" as const },
       { name: "artista", type: "text" as const },
       { name: "año", type: "text" as const },
+      { name: "digital", type: "checkbox" as const },
+      { name: "físico", type: "checkbox" as const },
     ],
     entries: [],
   },
@@ -36,6 +39,8 @@ const defaultSections: Section[] = [
       { name: "titulo", type: "text" as const },
       { name: "autor", type: "text" as const },
       { name: "año", type: "text" as const },
+      { name: "digital", type: "checkbox" as const },
+      { name: "físico", type: "checkbox" as const },
     ],
     entries: [],
   },
@@ -49,7 +54,7 @@ export default function App() {
   const [viewMode, setViewMode] = useState<"table" | "card">("table");
   const [filter, setFilter] = useState<{ [key: string]: string }>({});
   const [selectedFieldIndex, setSelectedFieldIndex] = useState<number | null>(null);
-  const [typeFilter, setTypeFilter] = useState<"all" | "digital" | "físico">("all");
+  const [checkboxFilter, setCheckboxFilter] = useState<string>("todos");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -67,7 +72,7 @@ export default function App() {
     fetchSections();
   }, []);
 
-  // --- Función para guardar una sección específica
+  // --- Guardar sección ---
   const saveSection = async (section: Section) => {
     const safeId = section.name?.replace(/[.#$/[\]]/g, "_") || crypto.randomUUID();
     const sectionRef = doc(db, "sections", safeId);
@@ -80,7 +85,7 @@ export default function App() {
       ? currentSection.entries[currentSection.entries.length - 1].id + 1
       : 1;
 
-    const newEntry: Entry = { id: nextId, digital: false, físico: false };
+    const newEntry: Entry = { id: nextId };
     currentSection.fields.forEach((f) => {
       newEntry[f.name] = f.type === "checkbox" ? false : "";
     });
@@ -89,7 +94,6 @@ export default function App() {
     updatedSections[currentSectionIndex].entries.push(newEntry);
     setSections(updatedSections);
     setEditingId(nextId);
-
     await saveSection(updatedSections[currentSectionIndex]);
   };
 
@@ -99,7 +103,6 @@ export default function App() {
     if (idx > -1) {
       updatedSections[currentSectionIndex].entries[idx][field] = value;
       setSections(updatedSections);
-
       await saveSection(updatedSections[currentSectionIndex]);
     }
   };
@@ -109,11 +112,10 @@ export default function App() {
     updatedSections[currentSectionIndex].entries = updatedSections[currentSectionIndex].entries.filter((e) => e.id !== id);
     setSections(updatedSections);
     if (editingId === id) setEditingId(null);
-
     await saveSection(updatedSections[currentSectionIndex]);
   };
 
-  // --- Columnas 
+  // --- Columnas ---
   const addField = (field: Field) => {
     if (!field.name.trim()) return;
     const updatedSections = [...sections];
@@ -163,11 +165,7 @@ export default function App() {
     if (!name.trim()) return;
     const updated = [
       ...sections,
-      {
-        name,
-        fields: [{ name: "titulo", type: "text" as const }],
-        entries: [],
-      },
+      { name, fields: [{ name: "titulo", type: "text" as const }], entries: [] },
     ];
     setSections(updated);
     saveSection(updated[updated.length - 1]);
@@ -180,26 +178,24 @@ export default function App() {
     if (currentSectionIndex >= updated.length) setCurrentSectionIndex(updated.length - 1);
   };
 
-  // --- Filtrado por texto y tipo ---
+  // --- 🔍 Filtrado dinámico ---
   const filteredEntries = currentSection.entries.filter((entry) => {
     const matchesText = Object.entries(filter).every(([key, value]) =>
       !value || String(entry[key] || "").toLowerCase().includes(value.toLowerCase())
     );
 
-    const matchesType =
-      typeFilter === "all"
-        ? true
-        : typeFilter === "digital"
-        ? entry.digital
-        : entry.físico;
+    const matchesCheckbox =
+      checkboxFilter === "todos" ? true : !!entry[checkboxFilter];
 
-    return matchesText && matchesType;
+    return matchesText && matchesCheckbox;
   });
 
   // --- Render principal ---
+  const checkboxFields = currentSection.fields.filter((f) => f.type === "checkbox");
+  const textFields = currentSection.fields.filter((f) => f.type === "text");
+
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-gray-900 text-gray-100 overflow-hidden">
-      {/* Sidebar: ocupa todo el ancho en móvil y columna fija en escritorio */}
       <aside className="w-full md:w-64 flex-shrink-0">
         <Sidebar
           sections={sections}
@@ -209,8 +205,6 @@ export default function App() {
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
         />
-
-        {/* Overlay al abrir Sidebar en móvil */}
         {sidebarOpen && (
           <div
             className="fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden"
@@ -219,10 +213,8 @@ export default function App() {
         )}
       </aside>
 
-      {/* Contenido principal */}
       <main className="flex-1 p-4 sm:p-6 overflow-auto app-container">
         <div className="flex flex-wrap justify-between items-center mb-4 gap-2">
-          {/* Botón hamburger visible solo en móvil */}
           <button
             className="md:hidden p-2 bg-gray-800 rounded hover:bg-gray-700"
             onClick={() => setSidebarOpen(true)}
@@ -233,14 +225,18 @@ export default function App() {
           <h1 className="text-xl sm:text-2xl font-bold">{currentSection.name}</h1>
 
           <div className="flex flex-wrap gap-2 items-center">
+            {/* 🔽 Nuevo selector unificado para todos los checkbox */}
             <select
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value as "all" | "digital" | "físico")}
+              value={checkboxFilter}
+              onChange={(e) => setCheckboxFilter(e.target.value)}
               className="p-2 bg-gray-800 border border-gray-600 rounded text-sm sm:text-base"
             >
-              <option value="all">Todos</option>
-              <option value="digital">Digital</option>
-              <option value="físico">Físico</option>
+              <option value="todos">Todos</option>
+              {checkboxFields.map((f) => (
+                <option key={f.name} value={f.name}>
+                  {f.name.charAt(0).toUpperCase() + f.name.slice(1)}
+                </option>
+              ))}
             </select>
 
             <button
@@ -271,8 +267,9 @@ export default function App() {
           />
         ) : (
           <>
+            {/* 🧭 Filtros de texto solo para campos text */}
             <div className="mb-4 flex flex-wrap gap-2">
-              {currentSection.fields.map((f) => (
+              {textFields.map((f) => (
                 <input
                   key={f.name}
                   placeholder={`Filtrar por ${f.name}`}
@@ -315,5 +312,4 @@ export default function App() {
       </main>
     </div>
   );
-
 }
