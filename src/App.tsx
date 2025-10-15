@@ -67,7 +67,7 @@ export default function App() {
     fetchSections();
   }, []);
 
-  // --- Función para guardar una sección específica 
+  // --- Función para guardar una sección específica ---
   const saveSection = async (section: Section) => {
     const safeId = section.name?.replace(/[.#$/[\]]/g, "_") || crypto.randomUUID();
     const sectionRef = doc(db, "sections", safeId);
