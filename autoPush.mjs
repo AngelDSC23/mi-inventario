@@ -19,6 +19,9 @@ let timeoutId = null;
 
 console.log("Auto-push watcher con debounce iniciado...");
 
+// Detectar si es Windows
+const isWindows = process.platform === "win32";
+
 // Función para comprobar si un path está ignorado
 function isIgnored(filePath) {
   return ignoreList.some(ignored => filePath.includes(ignored));
@@ -27,13 +30,17 @@ function isIgnored(filePath) {
 // Función para comprobar si el cambio requiere deploy
 function shouldDeploy(filePath) {
   const ext = path.extname(filePath).toLowerCase();
-  // Solo desplegar si es archivo de código y está en src o components
   return deployExtensions.includes(ext) && (filePath.includes(`${path.sep}src${path.sep}`) || filePath.includes(`${path.sep}components${path.sep}`));
 }
 
 // Función que hace commit y push a main
 function pushChanges(filePath) {
-  const repoRoot = process.cwd(); // Asegura ejecución desde la raíz del repo
+  const repoRoot = process.cwd();
+
+  // En Windows, revisar longitud de la ruta
+  if (isWindows && repoRoot.length > 50) { // Ajustable según conveniencia
+    console.warn("⚠️ Ruta del proyecto larga en Windows, deploy a gh-pages puede fallar (ENAMETOOLONG). Considera moverlo a una ruta más corta.");
+  }
 
   exec("git status --porcelain", { cwd: repoRoot }, (err, stdout, stderr) => {
     if (err) {
@@ -56,8 +63,12 @@ function pushChanges(filePath) {
         console.log("Cambios subidos a GitHub correctamente ✅");
 
         if (shouldDeploy(filePath)) {
-          console.log("Archivo crítico detectado, iniciando build + deploy...");
-          buildAndDeploy();
+          if (isWindows && repoRoot.length > 50) {
+            console.log("Cambio detectado en archivo crítico, pero deploy se omite en Windows por ruta larga ⚠️");
+          } else {
+            console.log("Archivo crítico detectado, iniciando build + deploy...");
+            buildAndDeploy();
+          }
         } else {
           console.log("Cambio detectado, pero no requiere build/deploy ✨");
         }
@@ -96,7 +107,6 @@ watchFolders.forEach(folder => {
 
     console.log(`Cambio detectado en ${filename}`);
 
-    // Reiniciar el timer de debounce
     if (timeoutId) clearTimeout(timeoutId);
     timeoutId = setTimeout(() => {
       pushChanges(fullPath);
