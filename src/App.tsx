@@ -17,8 +17,6 @@ const defaultSections: Section[] = [
       { name: "autor", type: "text" as const },
       { name: "año", type: "text" as const },
       { name: "edición", type: "text" as const },
-      { name: "digital", type: "checkbox" as const },
-      { name: "físico", type: "checkbox" as const },
     ],
     entries: [],
   },
@@ -28,8 +26,6 @@ const defaultSections: Section[] = [
       { name: "titulo", type: "text" as const },
       { name: "artista", type: "text" as const },
       { name: "año", type: "text" as const },
-      { name: "digital", type: "checkbox" as const },
-      { name: "físico", type: "checkbox" as const },
     ],
     entries: [],
   },
@@ -39,8 +35,6 @@ const defaultSections: Section[] = [
       { name: "titulo", type: "text" as const },
       { name: "autor", type: "text" as const },
       { name: "año", type: "text" as const },
-      { name: "digital", type: "checkbox" as const },
-      { name: "físico", type: "checkbox" as const },
     ],
     entries: [],
   },
@@ -54,7 +48,7 @@ export default function App() {
   const [viewMode, setViewMode] = useState<"table" | "card">("table");
   const [filter, setFilter] = useState<{ [key: string]: string }>({});
   const [selectedFieldIndex, setSelectedFieldIndex] = useState<number | null>(null);
-  const [checkboxFilter, setCheckboxFilter] = useState<string>("todos");
+  const [typeFilter, setTypeFilter] = useState<"all" | "digital" | "físico">("all");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -72,7 +66,7 @@ export default function App() {
     fetchSections();
   }, []);
 
-  // --- Guardar sección ---
+  // --- Función para guardar una sección específica
   const saveSection = async (section: Section) => {
     const safeId = section.name?.replace(/[.#$/[\]]/g, "_") || crypto.randomUUID();
     const sectionRef = doc(db, "sections", safeId);
@@ -85,15 +79,20 @@ export default function App() {
       ? currentSection.entries[currentSection.entries.length - 1].id + 1
       : 1;
 
-    const newEntry: Entry = { id: nextId };
+    const newEntry: Entry = { id: nextId, digital: false, físico: false };
+
+    // Inicializar otros campos de la sección
     currentSection.fields.forEach((f) => {
-      newEntry[f.name] = f.type === "checkbox" ? false : "";
+      if (!(f.name in newEntry)) {
+        newEntry[f.name] = f.type === "checkbox" ? false : "";
+      }
     });
 
     const updatedSections = [...sections];
     updatedSections[currentSectionIndex].entries.push(newEntry);
     setSections(updatedSections);
     setEditingId(nextId);
+
     await saveSection(updatedSections[currentSectionIndex]);
   };
 
@@ -103,6 +102,7 @@ export default function App() {
     if (idx > -1) {
       updatedSections[currentSectionIndex].entries[idx][field] = value;
       setSections(updatedSections);
+
       await saveSection(updatedSections[currentSectionIndex]);
     }
   };
@@ -112,6 +112,7 @@ export default function App() {
     updatedSections[currentSectionIndex].entries = updatedSections[currentSectionIndex].entries.filter((e) => e.id !== id);
     setSections(updatedSections);
     if (editingId === id) setEditingId(null);
+
     await saveSection(updatedSections[currentSectionIndex]);
   };
 
@@ -122,6 +123,12 @@ export default function App() {
     const section = updatedSections[currentSectionIndex];
     if (!section.fields.some((f) => f.name === field.name)) {
       section.fields.push(field);
+
+      // Inicializar el valor para todos los entries existentes
+      section.entries.forEach((entry) => {
+        entry[field.name] = field.type === "checkbox" ? false : "";
+      });
+
       setSections(updatedSections);
       saveSection(updatedSections[currentSectionIndex]);
     }
@@ -163,12 +170,13 @@ export default function App() {
   // --- Apartados ---
   const addSection = (name: string) => {
     if (!name.trim()) return;
-    const updated = [
-      ...sections,
-      { name, fields: [{ name: "titulo", type: "text" as const }], entries: [] },
-    ];
-    setSections(updated);
-    saveSection(updated[updated.length - 1]);
+    const newSection: Section = {
+      name,
+      fields: [{ name: "titulo", type: "text" as const }],
+      entries: [],
+    };
+    setSections([...sections, newSection]);
+    saveSection(newSection);
   };
 
   const deleteSection = (index: number) => {
@@ -178,22 +186,23 @@ export default function App() {
     if (currentSectionIndex >= updated.length) setCurrentSectionIndex(updated.length - 1);
   };
 
-  // --- 🔍 Filtrado dinámico ---
+  // --- Filtrado por texto y tipo ---
   const filteredEntries = currentSection.entries.filter((entry) => {
     const matchesText = Object.entries(filter).every(([key, value]) =>
       !value || String(entry[key] || "").toLowerCase().includes(value.toLowerCase())
     );
 
-    const matchesCheckbox =
-      checkboxFilter === "todos" ? true : !!entry[checkboxFilter];
+    const matchesType =
+      typeFilter === "all"
+        ? true
+        : typeFilter === "digital"
+        ? entry.digital
+        : entry.físico;
 
-    return matchesText && matchesCheckbox;
+    return matchesText && matchesType;
   });
 
   // --- Render principal ---
-  const checkboxFields = currentSection.fields.filter((f) => f.type === "checkbox");
-  const textFields = currentSection.fields.filter((f) => f.type === "text");
-
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-gray-900 text-gray-100 overflow-hidden">
       <aside className="w-full md:w-64 flex-shrink-0">
@@ -225,18 +234,14 @@ export default function App() {
           <h1 className="text-xl sm:text-2xl font-bold">{currentSection.name}</h1>
 
           <div className="flex flex-wrap gap-2 items-center">
-            {/* 🔽 Nuevo selector unificado para todos los checkbox */}
             <select
-              value={checkboxFilter}
-              onChange={(e) => setCheckboxFilter(e.target.value)}
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value as "all" | "digital" | "físico")}
               className="p-2 bg-gray-800 border border-gray-600 rounded text-sm sm:text-base"
             >
-              <option value="todos">Todos</option>
-              {checkboxFields.map((f) => (
-                <option key={f.name} value={f.name}>
-                  {f.name.charAt(0).toUpperCase() + f.name.slice(1)}
-                </option>
-              ))}
+              <option value="all">Todos</option>
+              <option value="digital">Digital</option>
+              <option value="físico">Físico</option>
             </select>
 
             <button
@@ -267,9 +272,8 @@ export default function App() {
           />
         ) : (
           <>
-            {/* 🧭 Filtros de texto solo para campos text */}
             <div className="mb-4 flex flex-wrap gap-2">
-              {textFields.map((f) => (
+              {currentSection.fields.map((f) => (
                 <input
                   key={f.name}
                   placeholder={`Filtrar por ${f.name}`}
