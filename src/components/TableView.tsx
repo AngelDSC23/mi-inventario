@@ -95,24 +95,28 @@ const TableView: React.FC<TableViewProps> = ({
                   <td className="p-2 border">{e.id}</td>
                   {fields.map((f, fieldIndex) => {
                     const refKey = `${entryIndex}-${fieldIndex}`;
+                    const value = e[f.name];
+
                     return (
                       <td key={f.name} className="p-2 border">
                         <div className="flex justify-center items-center h-full">
                           {f.type === "checkbox" ? (
-                            <input
-                              type="checkbox"
-                              checked={!!e[f.name]}
+                            <select
                               disabled={!isEditing}
+                              value={value ? "true" : "false"}
                               onChange={(ev) =>
-                                updateEntry(e.id, f.name, ev.target.checked)
+                                updateEntry(e.id, f.name, ev.target.value === "true")
                               }
-                              className="w-5 h-5 accent-blue-500 cursor-pointer"
-                            />
+                              className="w-full p-1 rounded bg-gray-700 border border-gray-600 cursor-pointer"
+                            >
+                              <option value="true">Sí</option>
+                              <option value="false">No</option>
+                            </select>
                           ) : (
                             <input
                               ref={(el) => { inputRefs.current[refKey] = el; }}
                               disabled={!isEditing}
-                              value={e[f.name] || ""}
+                              value={value || ""}
                               onChange={(ev) =>
                                 updateEntry(e.id, f.name, ev.target.value)
                               }
@@ -126,6 +130,7 @@ const TableView: React.FC<TableViewProps> = ({
                       </td>
                     );
                   })}
+
                   <td className="p-2 border">
                     <div className="flex justify-center items-center h-full">
                       <input
@@ -139,6 +144,7 @@ const TableView: React.FC<TableViewProps> = ({
                       />
                     </div>
                   </td>
+
                   <td className="p-2 border">
                     <div className="flex justify-center items-center h-full">
                       <input
@@ -152,6 +158,7 @@ const TableView: React.FC<TableViewProps> = ({
                       />
                     </div>
                   </td>
+
                   <td className="p-2 border flex gap-2 justify-center">
                     <button
                       onClick={() => setEditingId(isEditing ? null : e.id)}
