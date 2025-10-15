@@ -66,7 +66,7 @@ export default function App() {
     fetchSections();
   }, []);
 
-  // --- Función para guardar una sección específica
+  // --- Función para guardar una sección específica ---
   const saveSection = async (section: Section) => {
     const safeId = section.name?.replace(/[.#$/[\]]/g, "_") || crypto.randomUUID();
     const sectionRef = doc(db, "sections", safeId);
@@ -80,8 +80,6 @@ export default function App() {
       : 1;
 
     const newEntry: Entry = { id: nextId, digital: false, físico: false };
-
-    // Inicializar otros campos de la sección
     currentSection.fields.forEach((f) => {
       if (!(f.name in newEntry)) {
         newEntry[f.name] = f.type === "checkbox" ? false : "";
@@ -102,7 +100,6 @@ export default function App() {
     if (idx > -1) {
       updatedSections[currentSectionIndex].entries[idx][field] = value;
       setSections(updatedSections);
-
       await saveSection(updatedSections[currentSectionIndex]);
     }
   };
@@ -112,7 +109,6 @@ export default function App() {
     updatedSections[currentSectionIndex].entries = updatedSections[currentSectionIndex].entries.filter((e) => e.id !== id);
     setSections(updatedSections);
     if (editingId === id) setEditingId(null);
-
     await saveSection(updatedSections[currentSectionIndex]);
   };
 
@@ -123,12 +119,9 @@ export default function App() {
     const section = updatedSections[currentSectionIndex];
     if (!section.fields.some((f) => f.name === field.name)) {
       section.fields.push(field);
-
-      // Inicializar el valor para todos los entries existentes
       section.entries.forEach((entry) => {
         entry[field.name] = field.type === "checkbox" ? false : "";
       });
-
       setSections(updatedSections);
       saveSection(updatedSections[currentSectionIndex]);
     }
@@ -186,20 +179,24 @@ export default function App() {
     if (currentSectionIndex >= updated.length) setCurrentSectionIndex(updated.length - 1);
   };
 
-  // --- Filtrado por texto y tipo ---
+  // --- Filtrado por texto y checkbox ---
   const filteredEntries = currentSection.entries.filter((entry) => {
-    const matchesText = Object.entries(filter).every(([key, value]) =>
-      !value || String(entry[key] || "").toLowerCase().includes(value.toLowerCase())
-    );
+    return currentSection.fields.every((f) => {
+      const filterValue = filter[f.name];
+      if (!filterValue || filterValue === "todos") return true;
 
-    const matchesType =
-      typeFilter === "all"
-        ? true
-        : typeFilter === "digital"
-        ? entry.digital
-        : entry.físico;
+      if (f.type === "checkbox") {
+        const val = entry[f.name] ? "true" : "false";
+        return val === filterValue;
+      }
 
-    return matchesText && matchesType;
+      return String(entry[f.name] || "").toLowerCase().includes(filterValue.toLowerCase());
+    });
+  }).filter((entry) => {
+    // Filtrado global por digital/físico
+    if (typeFilter === "all") return true;
+    if (typeFilter === "digital") return entry.digital;
+    return entry.físico;
   });
 
   // --- Render principal ---
@@ -273,15 +270,32 @@ export default function App() {
         ) : (
           <>
             <div className="mb-4 flex flex-wrap gap-2">
-              {currentSection.fields.map((f) => (
-                <input
-                  key={f.name}
-                  placeholder={`Filtrar por ${f.name}`}
-                  value={filter[f.name] || ""}
-                  onChange={(e) => setFilter({ ...filter, [f.name]: e.target.value })}
-                  className="p-1 sm:p-2 rounded bg-gray-700 border border-gray-600 text-sm sm:text-base"
-                />
-              ))}
+              {currentSection.fields.map((f) => {
+                if (f.type === "checkbox") {
+                  return (
+                    <select
+                      key={f.name}
+                      value={filter[f.name] || "todos"}
+                      onChange={(e) => setFilter({ ...filter, [f.name]: e.target.value })}
+                      className="p-1 sm:p-2 rounded bg-gray-700 border border-gray-600 text-sm sm:text-base"
+                    >
+                      <option value="todos">Todos</option>
+                      <option value="true">Sí</option>
+                      <option value="false">No</option>
+                    </select>
+                  );
+                } else {
+                  return (
+                    <input
+                      key={f.name}
+                      placeholder={`Filtrar por ${f.name}`}
+                      value={filter[f.name] || ""}
+                      onChange={(e) => setFilter({ ...filter, [f.name]: e.target.value })}
+                      className="p-1 sm:p-2 rounded bg-gray-700 border border-gray-600 text-sm sm:text-base"
+                    />
+                  );
+                }
+              })}
             </div>
 
             {viewMode === "table" ? (
