@@ -21,16 +21,26 @@ const TableView: React.FC<TableViewProps> = ({
   setEditingId,
 }) => {
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
-  const [filterField, setFilterField] = useState<string>("todos");
-
-  // ✅ Genera automáticamente las opciones de filtro según los campos tipo checkbox
+  
+  // --- Estado de filtros para campos tipo checkbox ---
   const checkboxFields = fields.filter((f) => f.type === "checkbox");
-  const filterOptions = ["todos", ...checkboxFields.map((f) => f.name)];
+  const [checkboxFilter, setCheckboxFilter] = useState<{ [key: string]: "all" | "true" | "false" }>({});
+  
+  // Inicializar filtros en mount
+  useEffect(() => {
+    const initialFilters: { [key: string]: "all" | "true" | "false" } = {};
+    checkboxFields.forEach((f) => { initialFilters[f.name] = "all"; });
+    setCheckboxFilter(initialFilters);
+  }, [fields]);
 
-  // ✅ Filtrado dinámico
+  // --- Filtrado dinámico ---
   const filteredEntries = entries.filter((entry) => {
-    if (filterField === "todos") return true;
-    return !!entry[filterField];
+    return checkboxFields.every((f) => {
+      const filterVal = checkboxFilter[f.name];
+      if (filterVal === "all") return true;
+      if (filterVal === "true") return !!entry[f.name];
+      return !entry[f.name];
+    });
   });
 
   const handleKeyNavigation = (
@@ -77,23 +87,28 @@ const TableView: React.FC<TableViewProps> = ({
 
   return (
     <>
-      {/* 🔍 Área de filtros */}
-      <div className="flex flex-wrap gap-3 items-center mb-4">
-        <label className="font-semibold">Filtrar por:</label>
-        <select
-          value={filterField}
-          onChange={(e) => setFilterField(e.target.value)}
-          className="bg-gray-800 border border-gray-600 text-white rounded p-1"
-        >
-          {filterOptions.map((opt) => (
-            <option key={opt} value={opt}>
-              {opt === "todos" ? "Todos" : opt.charAt(0).toUpperCase() + opt.slice(1)}
-            </option>
+      {/* 🔍 Filtros para checkbox */}
+      {checkboxFields.length > 0 && (
+        <div className="flex flex-wrap gap-3 items-center mb-4">
+          <label className="font-semibold">Filtrar:</label>
+          {checkboxFields.map((f) => (
+            <select
+              key={f.name}
+              value={checkboxFilter[f.name] || "all"}
+              onChange={(e) =>
+                setCheckboxFilter({ ...checkboxFilter, [f.name]: e.target.value as "all" | "true" | "false" })
+              }
+              className="bg-gray-800 border border-gray-600 text-white rounded p-1"
+            >
+              <option value="all">Todos ({f.name})</option>
+              <option value="true">Sí</option>
+              <option value="false">No</option>
+            </select>
           ))}
-        </select>
-      </div>
+        </div>
+      )}
 
-      {/* 🧾 Tabla de registros */}
+      {/* 🧾 Tabla */}
       <div className="table-container overflow-x-auto rounded-lg border border-gray-700">
         <table className="min-w-full border border-gray-700 mb-4">
           <thead className="bg-gray-800">
