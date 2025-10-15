@@ -28,34 +28,41 @@ function isIgnored(filePath) {
 function shouldDeploy(filePath) {
   const ext = path.extname(filePath).toLowerCase();
   // Solo desplegar si es archivo de código y está en src o components
-  return deployExtensions.includes(ext) && (filePath.includes("/src/") || filePath.includes("/components/"));
+  return deployExtensions.includes(ext) && (filePath.includes(`${path.sep}src${path.sep}`) || filePath.includes(`${path.sep}components${path.sep}`));
 }
 
 // Función que hace commit y push a main
 function pushChanges(filePath) {
-  exec("git status --porcelain", (err, stdout) => {
+  const repoRoot = process.cwd(); // Asegura ejecución desde la raíz del repo
+
+  exec("git status --porcelain", { cwd: repoRoot }, (err, stdout, stderr) => {
     if (err) {
-      console.error("Error revisando git:", err);
+      console.error("Error revisando git:", err, stderr);
       return;
     }
 
-    if (stdout) {
-      const commitMessage = `auto-update: ${new Date().toLocaleTimeString()}`;
-      exec(`git add . && git commit -m "${commitMessage}" && git push origin main`, (err, out) => {
-        if (err) {
-          console.error("Error haciendo push:", err);
-        } else {
-          console.log("Cambios subidos a GitHub correctamente ✅");
-
-          // Después del push a main, ejecutar build + deploy si aplica
-          if (shouldDeploy(filePath)) {
-            buildAndDeploy();
-          } else {
-            console.log("Cambio detectado, pero no requiere build/deploy ✨");
-          }
-        }
-      });
+    if (!stdout) {
+      console.log("No hay cambios para subir a GitHub.");
+      return;
     }
+
+    console.log("Archivos detectados por git:\n", stdout);
+
+    const commitMessage = `auto-update: ${new Date().toLocaleTimeString()}`;
+    exec(`git add . && git commit -m "${commitMessage}" && git push origin main`, { cwd: repoRoot }, (err, out, errOut) => {
+      if (err) {
+        console.error("Error haciendo push:", err, errOut);
+      } else {
+        console.log("Cambios subidos a GitHub correctamente ✅");
+
+        if (shouldDeploy(filePath)) {
+          console.log("Archivo crítico detectado, iniciando build + deploy...");
+          buildAndDeploy();
+        } else {
+          console.log("Cambio detectado, pero no requiere build/deploy ✨");
+        }
+      }
+    });
   });
 }
 
