@@ -147,7 +147,7 @@ body {
   }
 }
 
-/* ---- Ajustes visuales para vista móvil ---- */
+/*---- Ajustes visuales para vista móvil ----*/
 @media (max-width: 640px) {
   .card-grid {
     gap: 0.75rem !important;
