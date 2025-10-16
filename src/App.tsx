@@ -64,31 +64,44 @@ export default function App() {
   };
 
   // Entradas
-  const addEntry = async () => {
-    const nextId =
-      currentSection.entries.length > 0
-        ? currentSection.entries[currentSection.entries.length - 1].id + 1
-        : 1;
+  const addField = async (field: Field) => {
+  // Evitar nombres vacíos
+  if (!field.name.trim()) return;
 
-    // Crear nueva entrada con propiedades obligatorias
-    const newEntry: Entry = { id: nextId, digital: false, físico: false };
+  // Clonar el estado actual de secciones
+  const updatedSections = [...sections];
+  const section = { ...updatedSections[currentSectionIndex] };
 
-    // Inicializar campos dinámicos de la sección
-    currentSection.fields.forEach((f) => {
-      if (!(f.name in newEntry)) {
-        newEntry[f.name] = f.type === "checkbox" ? false : "";
-      }
-    });
+  // Clonar arrays para no mutar directamente
+  section.fields = [...section.fields];
+  section.entries = [...section.entries];
 
-    // Actualizar estado y seleccionar nueva entrada para edición
-    const updatedSections = [...sections];
-    updatedSections[currentSectionIndex].entries.push(newEntry);
+  // Si el campo no existe aún, añadirlo
+  if (!section.fields.some((f) => f.name === field.name)) {
+    // Asegurar que tiene tipo asignado
+    const safeField: Field = {
+      name: field.name.trim(),
+      type: field.type === "checkbox" ? "checkbox" : "text",
+    };
+
+    // Añadir el nuevo campo a la lista de campos
+    section.fields.push(safeField);
+
+    // Inicializar la nueva propiedad en cada entrada existente
+    section.entries = section.entries.map((entry) => ({
+      ...entry,
+      [safeField.name]: safeField.type === "checkbox" ? false : "",
+    }));
+
+    // Actualizar el array principal de secciones
+    updatedSections[currentSectionIndex] = section;
     setSections(updatedSections);
-    setEditingId(nextId);
 
-    // Guardar en Firestore
-    await saveSection(updatedSections[currentSectionIndex]);
-  };
+    // Guardar la sección actualizada en Firestore o en almacenamiento local
+    await saveSection(section);
+  }
+};
+
 
   const updateEntry = async (id: number, field: string, value: any) => {
     const updatedSections = [...sections];
