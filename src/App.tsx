@@ -44,7 +44,6 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedFieldIndex, setSelectedFieldIndex] = useState<number | null>(null);
 
-  // Estado para manejar la fila nueva editable
   const [newEntry, setNewEntry] = useState<Entry | null>(null);
 
   const currentSection = sections[currentSectionIndex];
@@ -59,6 +58,12 @@ export default function App() {
     }
     fetchSections();
   }, []);
+
+  // limpiar entrada nueva al cambiar vista o sección
+  useEffect(() => {
+    setNewEntry(null);
+    setEditingId(null);
+  }, [currentSectionIndex, viewMode]);
 
   const saveSection = async (section: Section) => {
     const safeId = section.name?.replace(/[.#$/[\]]/g, "_") || crypto.randomUUID();
@@ -87,16 +92,21 @@ export default function App() {
 
   const confirmNewEntry = async () => {
     if (!newEntry) return;
-    const updatedSections = [...sections];
-    updatedSections[currentSectionIndex].entries.push(newEntry);
-    setSections(updatedSections);
-    await saveSection(updatedSections[currentSectionIndex]);
+
+    setSections((prev) => {
+      const updated = [...prev];
+      const sectionCopy = { ...updated[currentSectionIndex] };
+      sectionCopy.entries = [...sectionCopy.entries, newEntry];
+      updated[currentSectionIndex] = sectionCopy;
+      saveSection(sectionCopy);
+      return updated;
+    });
+
     setNewEntry(null);
     setEditingId(null);
   };
 
   const updateEntry = async (id: number, field: string, value: any) => {
-    // Si es la nueva entrada editable
     if (newEntry && newEntry.id === id) {
       setNewEntry({ ...newEntry, [field]: value });
       return;
@@ -118,7 +128,6 @@ export default function App() {
   };
 
   const deleteEntry = async (id: number) => {
-    // Si es la nueva entrada
     if (newEntry && newEntry.id === id) {
       setNewEntry(null);
       return;
@@ -192,6 +201,16 @@ export default function App() {
                 ))}
               </select>
             )}
+
+            {/* Botón centralizado de añadir entrada */}
+            <button
+              onClick={addEntry}
+              disabled={!!newEntry}
+              className="p-2 bg-green-600 rounded hover:bg-green-700 text-sm sm:text-base disabled:opacity-50"
+            >
+              ➕ Añadir entrada
+            </button>
+
             <button
               className="p-2 bg-indigo-600 rounded hover:bg-indigo-700 text-sm sm:text-base"
               onClick={() => setViewMode((prev) => (prev === "table" ? "card" : "table"))}
@@ -235,7 +254,7 @@ export default function App() {
 
             {viewMode === "table" ? (
               <TableView
-                entries={filteredEntries} // no mezclamos newEntry aquí
+                entries={filteredEntries}
                 fields={currentSection.fields}
                 updateEntry={updateEntry}
                 deleteEntry={deleteEntry}
@@ -243,8 +262,8 @@ export default function App() {
                 confirmNewEntry={confirmNewEntry}
                 editingId={editingId}
                 setEditingId={setEditingId}
-                isNewEntryPresent={!!newEntry} // flag para ocultar botón inferior
-                newEntry={newEntry}             // fila editable real
+                isNewEntryPresent={!!newEntry}
+                newEntry={newEntry}
               />
             ) : (
               <CardView
@@ -252,12 +271,11 @@ export default function App() {
                 fields={currentSection.fields}
                 updateEntry={updateEntry}
                 deleteEntry={deleteEntry}
-                newEntry={newEntry}              // fila editable
-                setNewEntry={setNewEntry}        // para actualizarla
-                confirmNewEntry={confirmNewEntry} // para confirmar
+                newEntry={newEntry}
+                setNewEntry={setNewEntry}
+                confirmNewEntry={confirmNewEntry}
               />
             )}
-
           </>
         )}
 
