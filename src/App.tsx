@@ -43,7 +43,6 @@ export default function App() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // NUEVO: índice de campo seleccionado en SettingsPanel
   const [selectedFieldIndex, setSelectedFieldIndex] = useState<number | null>(null);
 
   const currentSection = sections[currentSectionIndex];
@@ -189,6 +188,45 @@ export default function App() {
     await saveSection(updatedSections[currentSectionIndex]);
   };
 
+  // -------------------
+  // Funciones de edición de secciones
+  // -------------------
+  const addSection = (name: string) => {
+    if (!name.trim() || sections.some((s) => s.name === name.trim())) return;
+    const newSection: Section = { name: name.trim(), fields: [], entries: [] };
+    const updated = [...sections, newSection];
+    setSections(updated);
+    setCurrentSectionIndex(updated.length - 1);
+    saveSection(newSection);
+  };
+
+  const deleteSection = (index: number) => {
+    if (index < 0 || index >= sections.length) return;
+    const updated = sections.filter((_, i) => i !== index);
+    setSections(updated);
+    if (currentSectionIndex >= updated.length) setCurrentSectionIndex(updated.length - 1);
+  };
+
+  const renameSection = (index: number, newName: string) => {
+    if (!newName.trim() || sections.some((s, i) => s.name === newName.trim() && i !== index))
+      return;
+    const updated = [...sections];
+    updated[index].name = newName.trim();
+    setSections(updated);
+    saveSection(updated[index]);
+  };
+
+  const moveSection = (index: number, direction: "up" | "down") => {
+    const newIndex = direction === "up" ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= sections.length) return;
+    const updated = [...sections];
+    [updated[index], updated[newIndex]] = [updated[newIndex], updated[index]];
+    setSections(updated);
+    if (currentSectionIndex === index) setCurrentSectionIndex(newIndex);
+    else if (currentSectionIndex === newIndex) setCurrentSectionIndex(index);
+  };
+  // -------------------
+
   const filteredEntries = currentSection.entries.filter((entry) => {
     if (checkboxFilter !== "todos" && !entry[checkboxFilter]) return false;
     return currentSection.fields.every((f) => {
@@ -310,8 +348,10 @@ export default function App() {
         {showSectionEditor && (
           <SectionEditorModal
             sections={sections}
-            addSection={(name) => {}}
-            deleteSection={(index) => {}}
+            addSection={addSection}
+            deleteSection={deleteSection}
+            renameSection={renameSection}
+            moveSection={moveSection}
             onClose={() => setShowSectionEditor(false)}
           />
         )}
