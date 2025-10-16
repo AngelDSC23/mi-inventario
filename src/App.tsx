@@ -102,6 +102,7 @@ export default function App() {
   }
 };
 
+
   const updateEntry = async (id: number, field: string, value: any) => {
     const updatedSections = [...sections];
     const idx = updatedSections[currentSectionIndex].entries.findIndex((e) => e.id === id);
