@@ -80,14 +80,14 @@ const TableView: React.FC<TableViewProps> = ({
                           <input
                             type="checkbox"
                             checked={!!value}
-                            disabled={!isEditing}
+                            disabled={!isEditing && !isNew}
                             onChange={(ev) => updateEntry(e.id, f.name, ev.target.checked)}
                             className="w-5 h-5 accent-blue-500 cursor-pointer"
                           />
                         ) : (
                           <input
                             ref={(el) => { inputRefs.current[refKey] = el; }}
-                            disabled={!isEditing}
+                            disabled={!isEditing && !isNew}
                             value={value || ""}
                             onChange={(ev) => updateEntry(e.id, f.name, ev.target.value)}
                             onKeyDown={(ev) => handleKeyNavigation(ev, entryIndex, fieldIndex)}
