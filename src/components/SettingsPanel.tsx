@@ -1,259 +1,159 @@
 import React, { useState } from "react";
-import { Entry, Section, Field } from "./types";
-import Sidebar from "./components/Sidebar";
-import TableView from "./components/TableView";
-import CardView from "./components/CardView";
-import SettingsPanel from "./components/SettingsPanel";
-import SectionEditorModal from "./components/SectionEditorModal";
+import TagInput from "./TagInput";
+import { Section, Field, FieldType } from "../types";
 
-const App: React.FC = () => {
-  /** -----------------------------
-   *   ESTADO PRINCIPAL
-   *  ----------------------------- */
-  const [sections, setSections] = useState<Section[]>([
-    {
-      name: "General",
-      fields: [{ name: "Título", type: "text" }],
-      entries: [],
-    },
-  ]);
+interface SettingsPanelProps {
+  currentSection: Section;
+  selectedFieldIndex: number | null;
+  setSelectedFieldIndex: (index: number | null) => void;
+  addField: (field: Field) => void;
+  deleteField: () => void;
+  moveField: (direction: "left" | "right") => void;
+  updateField: (index: number, updates: Partial<Field>) => void;
+}
 
-  const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
-  const [viewMode, setViewMode] = useState<"table" | "cards">("table");
-  const [showSettings, setShowSettings] = useState(false);
-  const [showSectionEditor, setShowSectionEditor] = useState(false);
-  const [selectedFieldIndex, setSelectedFieldIndex] = useState<number | null>(null);
+const SettingsPanel: React.FC<SettingsPanelProps> = ({
+  currentSection,
+  selectedFieldIndex,
+  setSelectedFieldIndex,
+  addField,
+  deleteField,
+  moveField,
+  updateField,
+}) => {
+  const [pendingType, setPendingType] = useState<FieldType>("text"); // tipo a crear
+  const selectedField =
+    selectedFieldIndex !== null ? currentSection.fields[selectedFieldIndex] : null;
 
-  // Estados para manejo de entradas
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [tempEntry, setTempEntry] = useState<Entry | null>(null);
-
-  const currentSection = sections[currentSectionIndex];
-
-  /** -----------------------------
-   *   SECCIONES
-   *  ----------------------------- */
-  const addSection = (name: string) => {
-    if (!name.trim()) return;
-    setSections((prev) => [...prev, { name, fields: [], entries: [] }]);
-  };
-
-  const deleteSection = (index: number) => {
-    setSections((prev) => prev.filter((_, i) => i !== index));
-    if (currentSectionIndex >= index && currentSectionIndex > 0) {
-      setCurrentSectionIndex(currentSectionIndex - 1);
+  const handleRename = (newName: string) => {
+    if (selectedFieldIndex !== null) {
+      updateField(selectedFieldIndex, { name: newName });
     }
   };
 
-  const renameSection = (index: number, newName: string) => {
-    setSections((prev) =>
-      prev.map((sec, i) => (i === index ? { ...sec, name: newName } : sec))
-    );
+  const handleTypeToggle = (type: FieldType) => {
+    if (selectedFieldIndex !== null) {
+      updateField(selectedFieldIndex, { type });
+    }
   };
 
-  const moveSection = (index: number, direction: "up" | "down") => {
-    setSections((prev) => {
-      const updated = [...prev];
-      const target = direction === "up" ? index - 1 : index + 1;
-      if (target < 0 || target >= updated.length) return prev;
-      [updated[index], updated[target]] = [updated[target], updated[index]];
-      return updated;
-    });
+  const handleAddField = (name: string) => {
+    const newField: Field = {
+      name,
+      type: pendingType,
+    };
+    addField(newField);
   };
 
-  /** -----------------------------
-   *   CAMPOS (FIELDS)
-   *  ----------------------------- */
-  const addField = (field: Field) => {
-    setSections((prev) => {
-      const updated = [...prev];
-      updated[currentSectionIndex] = {
-        ...updated[currentSectionIndex],
-        fields: [...updated[currentSectionIndex].fields, field],
-      };
-      return updated;
-    });
-  };
-
-  const deleteField = () => {
-    if (selectedFieldIndex === null) return;
-    setSections((prev) => {
-      const updated = [...prev];
-      const fields = [...updated[currentSectionIndex].fields];
-      fields.splice(selectedFieldIndex, 1);
-      updated[currentSectionIndex] = { ...updated[currentSectionIndex], fields };
-      return updated;
-    });
-    setSelectedFieldIndex(null);
-  };
-
-  const moveField = (direction: "left" | "right") => {
-    if (selectedFieldIndex === null) return;
-    setSections((prev) => {
-      const updated = [...prev];
-      const fields = [...updated[currentSectionIndex].fields];
-      const target =
-        direction === "left"
-          ? selectedFieldIndex - 1
-          : selectedFieldIndex + 1;
-      if (target < 0 || target >= fields.length) return prev;
-      [fields[selectedFieldIndex], fields[target]] = [
-        fields[target],
-        fields[selectedFieldIndex],
-      ];
-      updated[currentSectionIndex] = { ...updated[currentSectionIndex], fields };
-      return updated;
-    });
-  };
-
-  const updateField = (index: number, updates: Partial<Field>) => {
-    setSections((prev) => {
-      const updated = [...prev];
-      const section = updated[currentSectionIndex];
-      const fields = [...section.fields];
-      fields[index] = { ...fields[index], ...updates };
-      updated[currentSectionIndex] = { ...section, fields };
-      return updated;
-    });
-  };
-
-  /** -----------------------------
-   *   ENTRADAS (ENTRIES)
-   *  ----------------------------- */
-  const handleAddEntry = () => {
-    if (tempEntry) return; // evitar múltiples temporales
-    const newEntry: Entry = Object.fromEntries(
-      currentSection.fields.map((f) => [f.name, f.type === "checkbox" ? false : ""])
-    );
-    setTempEntry(newEntry);
-    setEditingId(Date.now());
-  };
-
-  const handleConfirmEntry = (confirmed: Entry) => {
-    setSections((prev) => {
-      const updated = [...prev];
-      const entries = [...updated[currentSectionIndex].entries, confirmed];
-      updated[currentSectionIndex] = { ...updated[currentSectionIndex], entries };
-      return updated;
-    });
-    setTempEntry(null);
-    setEditingId(null);
-  };
-
-  const handleUpdateEntry = (index: number, field: string, value: any) => {
-    setSections((prev) => {
-      const updated = [...prev];
-      const entries = [...updated[currentSectionIndex].entries];
-      entries[index] = { ...entries[index], [field]: value };
-      updated[currentSectionIndex] = { ...updated[currentSectionIndex], entries };
-      return updated;
-    });
-  };
-
-  const handleDeleteEntry = (index: number) => {
-    setSections((prev) => {
-      const updated = [...prev];
-      const entries = updated[currentSectionIndex].entries.filter(
-        (_, i) => i !== index
-      );
-      updated[currentSectionIndex] = { ...updated[currentSectionIndex], entries };
-      return updated;
-    });
-  };
-
-  /** -----------------------------
-   *   RENDER
-   *  ----------------------------- */
   return (
-    <div className="flex h-screen bg-gray-900 text-white">
-      <Sidebar
-        sections={sections}
-        currentSectionIndex={currentSectionIndex}
-        setCurrentSectionIndex={setCurrentSectionIndex}
-        onEditSections={() => setShowSectionEditor(true)}
-        onToggleSettings={() => setShowSettings((p) => !p)}
+    <div className="space-y-4">
+      <h2 className="text-xl font-semibold mb-2">
+        Configurar columnas de {currentSection.name}
+      </h2>
+
+      {/* Selector de tipo de campo a crear */}
+      <div className="flex gap-2 mb-2">
+        <button
+          onClick={() => setPendingType("text")}
+          className={`px-3 py-1 rounded border ${
+            pendingType === "text"
+              ? "bg-blue-600 border-blue-400 text-white"
+              : "bg-gray-700 border-gray-600 text-gray-200"
+          }`}
+        >
+          Texto
+        </button>
+        <button
+          onClick={() => setPendingType("checkbox")}
+          className={`px-3 py-1 rounded border ${
+            pendingType === "checkbox"
+              ? "bg-blue-600 border-blue-400 text-white"
+              : "bg-gray-700 border-gray-600 text-gray-200"
+          }`}
+        >
+          Checkbox
+        </button>
+      </div>
+
+      {/* Añadir nueva columna */}
+      <TagInput
+        onAdd={handleAddField}
+        placeholder="Nueva columna"
       />
 
-      <div className="flex-1 flex flex-col p-4 overflow-hidden">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-2xl font-semibold">{currentSection.name}</h1>
+      {/* Lista horizontal de campos */}
+      <div className="flex gap-2 flex-wrap">
+        {currentSection.fields.map((f, i) => (
+          <button
+            key={i}
+            onClick={() =>
+              setSelectedFieldIndex(selectedFieldIndex === i ? null : i)
+            }
+            className={`p-2 rounded border ${
+              selectedFieldIndex === i
+                ? "bg-blue-600 border-blue-400"
+                : "bg-gray-700 border-gray-600"
+            }`}
+          >
+            {f.name}
+          </button>
+        ))}
+      </div>
+
+      {/* Panel de edición del campo seleccionado */}
+      {selectedField && selectedFieldIndex !== null && (
+        <div className="bg-gray-800 p-4 rounded-xl border border-gray-700 space-y-3">
+          <input
+            value={selectedField.name}
+            onChange={(e) => handleRename(e.target.value)}
+            className="w-full p-2 rounded bg-gray-700 text-white border border-gray-600"
+          />
           <div className="flex gap-2">
             <button
-              onClick={() =>
-                setViewMode(viewMode === "table" ? "cards" : "table")
-              }
-              className="bg-gray-700 px-3 py-1 rounded hover:bg-gray-600"
+              onClick={() => handleTypeToggle("text")}
+              className={`px-3 py-1 rounded border ${
+                selectedField.type === "text"
+                  ? "bg-blue-600 border-blue-400 text-white"
+                  : "bg-gray-700 border-gray-600 text-gray-200"
+              }`}
             >
-              {viewMode === "table" ? "🔳 Vista tarjetas" : "📋 Vista tabla"}
+              Texto
             </button>
             <button
-              onClick={() => setShowSettings((s) => !s)}
-              className="bg-gray-700 px-3 py-1 rounded hover:bg-gray-600"
+              onClick={() => handleTypeToggle("checkbox")}
+              className={`px-3 py-1 rounded border ${
+                selectedField.type === "checkbox"
+                  ? "bg-blue-600 border-blue-400 text-white"
+                  : "bg-gray-700 border-gray-600 text-gray-200"
+              }`}
             >
-              ⚙️ Ajustes
+              Checkbox
+            </button>
+          </div>
+          <div className="flex gap-2 items-center">
+            <button
+              onClick={() => moveField("left")}
+              className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded"
+            >
+              ◀️
             </button>
             <button
-              onClick={handleAddEntry}
-              className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded"
+              onClick={() => moveField("right")}
+              className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded"
             >
-              ➕ Añadir entrada
+              ▶️
+            </button>
+            <button
+              onClick={deleteField}
+              className="px-3 py-1 bg-red-600 hover:bg-red-700 rounded"
+            >
+              🗑 Eliminar columna
             </button>
           </div>
         </div>
-
-        {/* Vista principal */}
-        <div className="flex-1 overflow-y-auto">
-          {viewMode === "table" ? (
-            <TableView
-              section={currentSection}
-              editingId={editingId}
-              tempEntry={tempEntry}
-              onConfirmEntry={handleConfirmEntry}
-              onUpdateEntry={handleUpdateEntry}
-              onDeleteEntry={handleDeleteEntry}
-            />
-          ) : (
-            <CardView
-              section={currentSection}
-              editingId={editingId}
-              tempEntry={tempEntry}
-              onConfirmEntry={handleConfirmEntry}
-              onUpdateEntry={handleUpdateEntry}
-              onDeleteEntry={handleDeleteEntry}
-            />
-          )}
-        </div>
-      </div>
-
-      {/* Panel lateral de configuración */}
-      {showSettings && (
-        <div className="w-80 bg-gray-850 p-4 border-l border-gray-700 overflow-y-auto">
-          <SettingsPanel
-            currentSection={currentSection}
-            selectedFieldIndex={selectedFieldIndex}
-            setSelectedFieldIndex={setSelectedFieldIndex}
-            addField={addField}
-            deleteField={deleteField}
-            moveField={moveField}
-            updateField={updateField}
-          />
-        </div>
-      )}
-
-      {/* Modal de edición de secciones */}
-      {showSectionEditor && (
-        <SectionEditorModal
-          sections={sections}
-          addSection={addSection}
-          deleteSection={deleteSection}
-          renameSection={renameSection}
-          moveSection={moveSection}
-          onClose={() => setShowSectionEditor(false)}
-        />
       )}
     </div>
   );
 };
 
-export default App;
+export default SettingsPanel;
