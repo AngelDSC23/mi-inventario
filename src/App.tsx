@@ -42,9 +42,8 @@ export default function App() {
   const [checkboxFilter, setCheckboxFilter] = useState<string>("todos");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [selectedFieldIndex, setSelectedFieldIndex] = useState<number | null>(null);
 
-  // Estado para la fila de entrada rápida
+  const [selectedFieldIndex, setSelectedFieldIndex] = useState<number | null>(null);
   const [newEntry, setNewEntry] = useState<Entry | null>(null);
 
   const currentSection = sections[currentSectionIndex];
@@ -66,9 +65,7 @@ export default function App() {
     await setDoc(sectionRef, section, { merge: true });
   };
 
-  // -------------------
-  // Funciones de edición de campos (sin cambios)
-  // -------------------
+  // ------------------- Funciones de campos -------------------
   const updateField = (index: number, updates: Partial<Field>) => {
     setSections((prev) =>
       prev.map((section, sIdx) => {
@@ -129,19 +126,33 @@ export default function App() {
   };
   // -------------------
 
-  const addEntry = async () => {
+  // ------------------- Funciones de entradas -------------------
+  const startNewEntry = () => {
     const nextId =
       currentSection.entries.length > 0
         ? currentSection.entries[currentSection.entries.length - 1].id + 1
         : 1;
-    const entry: Entry = { id: nextId, digital: false, físico: false };
-    currentSection.fields.forEach((f) => {
-      if (!(f.name in entry)) entry[f.name] = f.type === "checkbox" ? false : "";
-    });
-    const updatedSections = [...sections];
-    updatedSections[currentSectionIndex].entries.push(entry);
-    setSections(updatedSections);
+
+    const entryBase: Entry = {
+      id: nextId,
+      digital: false,
+      físico: false,
+      ...Object.fromEntries(
+        currentSection.fields.map((f) => [f.name, f.type === "checkbox" ? false : ""])
+      ),
+    };
+
+    setNewEntry(entryBase);
     setEditingId(nextId);
+  };
+
+  const confirmNewEntry = async () => {
+    if (!newEntry) return;
+    const updatedSections = [...sections];
+    updatedSections[currentSectionIndex].entries.push(newEntry);
+    setSections(updatedSections);
+    setEditingId(null);
+    setNewEntry(null);
     await saveSection(updatedSections[currentSectionIndex]);
   };
 
@@ -159,15 +170,16 @@ export default function App() {
         return section;
       })
     );
-  };
-
-  const confirmNewEntry = async () => {
-    if (!newEntry) return;
-    const updatedSections = [...sections];
-    updatedSections[currentSectionIndex].entries.push({ ...newEntry });
-    setSections(updatedSections);
-    setNewEntry(null);
-    await saveSection(updatedSections[currentSectionIndex]);
+    if (newEntry && newEntry.id === id) {
+      setNewEntry((prev) =>
+        prev
+          ? {
+              ...prev,
+              [field]: value,
+            }
+          : null
+      );
+    }
   };
 
   const addField = async (newField: Field) => {
@@ -196,12 +208,12 @@ export default function App() {
     );
     setSections(updatedSections);
     if (editingId === id) setEditingId(null);
+    if (newEntry?.id === id) setNewEntry(null);
     await saveSection(updatedSections[currentSectionIndex]);
   };
+  // -------------------
 
-  // -------------------
-  // Funciones de edición de secciones
-  // -------------------
+  // ------------------- Funciones de secciones -------------------
   const addSection = (name: string) => {
     if (!name.trim() || sections.some((s) => s.name === name.trim())) return;
     const newSection: Section = { name: name.trim(), fields: [], entries: [] };
@@ -271,10 +283,15 @@ export default function App() {
       </aside>
 
       <main className="flex-1 p-4 sm:p-6 overflow-auto app-container">
-        {/* ----------------- Sección superior fija ----------------- */}
-        <div className="sticky top-0 z-20 bg-gray-900 pt-2 pb-2 mb-4 flex flex-wrap justify-between items-center gap-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-bold">{currentSection.name}</h1>
+        <div className="flex flex-wrap justify-between items-center mb-4 gap-2 sticky top-0 bg-gray-900 z-20 p-2 rounded">
+          <button
+            className="md:hidden p-2 bg-gray-800 rounded hover:bg-gray-700"
+            onClick={() => setSidebarOpen(true)}
+          >
+            ☰
+          </button>
+          <h1 className="text-xl sm:text-2xl font-bold">{currentSection.name}</h1>
+          <div className="flex flex-wrap gap-2 items-center">
             {checkboxFields.length > 0 && (
               <select
                 value={checkboxFilter}
@@ -301,47 +318,14 @@ export default function App() {
             >
               {showSettings ? "Cerrar ajustes" : "Ajustes"}
             </button>
+            <button
+              className="p-2 bg-green-600 rounded hover:bg-green-700 text-sm sm:text-base"
+              onClick={startNewEntry}
+            >
+              Añadir entrada
+            </button>
           </div>
-
-          {/* ----------------- Fila de entrada rápida ----------------- */}
-          {currentSection.fields.length > 0 && (
-            <div className="flex flex-wrap gap-2 items-center w-full sm:w-auto mt-2">
-              {currentSection.fields.map((f) => {
-                const value = newEntry?.[f.name] || "";
-                return f.type === "checkbox" ? (
-                  <label key={f.name} className="flex items-center gap-1">
-                    <input
-                      type="checkbox"
-                      checked={!!value}
-                      onChange={(e) =>
-                        setNewEntry((prev) => ({ ...prev, [f.name]: e.target.checked }))
-                      }
-                      className="w-5 h-5 accent-blue-500 cursor-pointer"
-                    />
-                    {f.name}
-                  </label>
-                ) : (
-                  <input
-                    key={f.name}
-                    placeholder={f.name}
-                    value={value}
-                    onChange={(e) =>
-                      setNewEntry((prev) => ({ ...prev, [f.name]: e.target.value }))
-                    }
-                    className="p-1 sm:p-2 rounded bg-gray-700 border border-gray-600 text-sm sm:text-base"
-                  />
-                );
-              })}
-              <button
-                onClick={confirmNewEntry}
-                className="p-2 bg-green-600 hover:bg-green-700 rounded text-sm sm:text-base"
-              >
-                Añadir entrada
-              </button>
-            </div>
-          )}
         </div>
-        {/* ----------------- /Sección superior fija ----------------- */}
 
         {showSettings ? (
           <SettingsPanel
@@ -353,29 +337,41 @@ export default function App() {
             moveField={moveField}
             updateField={updateField}
           />
-        ) : viewMode === "table" ? (
-          <TableView
-            entries={filteredEntries}
-            fields={currentSection.fields}
-            updateEntry={updateEntry}
-            deleteEntry={deleteEntry}
-            addEntry={addEntry}
-            editingId={editingId}
-            setEditingId={setEditingId}
-            newEntry={newEntry}
-            setNewEntry={setNewEntry}
-            confirmNewEntry={confirmNewEntry}
-          />
         ) : (
-          <CardView
-            entries={filteredEntries}
-            fields={currentSection.fields}
-            updateEntry={updateEntry}
-            deleteEntry={deleteEntry}
-            newEntry={newEntry}
-            setNewEntry={setNewEntry}
-            confirmNewEntry={confirmNewEntry}
-          />
+          <>
+            <div className="mb-4 flex flex-wrap gap-2">
+              {currentSection.fields
+                .filter((f) => f.type === "text")
+                .map((f) => (
+                  <input
+                    key={f.name}
+                    placeholder={`Filtrar por ${f.name}`}
+                    value={filterText[f.name] || ""}
+                    onChange={(e) => setFilterText({ ...filterText, [f.name]: e.target.value })}
+                    className="p-1 sm:p-2 rounded bg-gray-700 border border-gray-600 text-sm sm:text-base"
+                  />
+                ))}
+            </div>
+
+            {viewMode === "table" ? (
+              <TableView
+                entries={newEntry ? [newEntry, ...filteredEntries] : filteredEntries}
+                fields={currentSection.fields}
+                updateEntry={updateEntry}
+                deleteEntry={deleteEntry}
+                addEntry={confirmNewEntry}
+                editingId={editingId}
+                setEditingId={setEditingId}
+              />
+            ) : (
+              <CardView
+                entries={newEntry ? [newEntry, ...filteredEntries] : filteredEntries}
+                fields={currentSection.fields}
+                updateEntry={updateEntry}
+                deleteEntry={deleteEntry}
+              />
+            )}
+          </>
         )}
 
         {showSectionEditor && (
