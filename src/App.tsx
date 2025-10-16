@@ -8,7 +8,6 @@ import CardView from "./components/CardView";
 import { collection, doc, setDoc, getDocs } from "firebase/firestore";
 import { db } from "./firebase-config";
 
-// --- Valores por defecto 
 const defaultSections: Section[] = [
   {
     name: "Libros",
@@ -17,6 +16,7 @@ const defaultSections: Section[] = [
       { name: "autor", type: "text" as const },
       { name: "año", type: "text" as const },
       { name: "edición", type: "text" as const },
+      { name: "leído", type: "checkbox" as const },
     ],
     entries: [],
   },
@@ -26,15 +26,7 @@ const defaultSections: Section[] = [
       { name: "titulo", type: "text" as const },
       { name: "artista", type: "text" as const },
       { name: "año", type: "text" as const },
-    ],
-    entries: [],
-  },
-  {
-    name: "Guiones",
-    fields: [
-      { name: "titulo", type: "text" as const },
-      { name: "autor", type: "text" as const },
-      { name: "año", type: "text" as const },
+      { name: "digital", type: "checkbox" as const },
     ],
     entries: [],
   },
@@ -46,14 +38,14 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showSectionEditor, setShowSectionEditor] = useState(false);
   const [viewMode, setViewMode] = useState<"table" | "card">("table");
-  const [filter, setFilter] = useState<{ [key: string]: string }>({});
-  const [typeFilter, setTypeFilter] = useState<"all" | "digital" | "físico">("all");
+  const [filterText, setFilterText] = useState<{ [key: string]: string }>({});
+  const [checkboxFilter, setCheckboxFilter] = useState<string>("todos");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const currentSection = sections[currentSectionIndex];
 
-  // --- Cargar datos desde Firestore ---
+  // Cargar datos de Firestore
   useEffect(() => {
     async function fetchSections() {
       const querySnapshot = await getDocs(collection(db, "sections"));
@@ -71,24 +63,22 @@ export default function App() {
     await setDoc(sectionRef, section, { merge: true });
   };
 
-  // --- Entradas ---
+  // Entradas
   const addEntry = async () => {
-    const nextId = currentSection.entries.length > 0
-      ? currentSection.entries[currentSection.entries.length - 1].id + 1
-      : 1;
+    const nextId =
+      currentSection.entries.length > 0
+        ? currentSection.entries[currentSection.entries.length - 1].id + 1
+        : 1;
 
-    const newEntry: Entry = { id: nextId, digital: false, físico: false };
+    const newEntry: Entry = { id: nextId };
     currentSection.fields.forEach((f) => {
-      if (!(f.name in newEntry)) {
-        newEntry[f.name] = f.type === "checkbox" ? false : "";
-      }
+      newEntry[f.name] = f.type === "checkbox" ? false : "";
     });
 
     const updatedSections = [...sections];
     updatedSections[currentSectionIndex].entries.push(newEntry);
     setSections(updatedSections);
     setEditingId(nextId);
-
     await saveSection(updatedSections[currentSectionIndex]);
   };
 
@@ -104,92 +94,35 @@ export default function App() {
 
   const deleteEntry = async (id: number) => {
     const updatedSections = [...sections];
-    updatedSections[currentSectionIndex].entries = updatedSections[currentSectionIndex].entries.filter((e) => e.id !== id);
+    updatedSections[currentSectionIndex].entries = updatedSections[currentSectionIndex].entries.filter(
+      (e) => e.id !== id
+    );
     setSections(updatedSections);
     if (editingId === id) setEditingId(null);
     await saveSection(updatedSections[currentSectionIndex]);
   };
 
-  // --- Columnas ---
-  const addField = (field: Field) => {
-    if (!field.name.trim()) return;
-    const updatedSections = [...sections];
-    const section = updatedSections[currentSectionIndex];
-    if (!section.fields.some((f) => f.name === field.name)) {
-      section.fields.push(field);
-      section.entries.forEach((entry) => {
-        entry[field.name] = field.type === "checkbox" ? false : "";
-      });
-      setSections(updatedSections);
-      saveSection(updatedSections[currentSectionIndex]);
-    }
-  };
-
-  const updateField = (index: number, updates: Partial<Field>) => {
-    const updatedSections = [...sections];
-    const section = updatedSections[currentSectionIndex];
-    section.fields[index] = { ...section.fields[index], ...updates };
-    setSections(updatedSections);
-    saveSection(updatedSections[currentSectionIndex]);
-  };
-
-  const deleteField = (index: number) => {
-    const updatedSections = [...sections];
-    const section = updatedSections[currentSectionIndex];
-    const field = section.fields[index];
-    section.fields.splice(index, 1);
-    section.entries.forEach((entry) => delete entry[field.name]);
-    setSections(updatedSections);
-    saveSection(updatedSections[currentSectionIndex]);
-  };
-
-  const moveField = (direction: "left" | "right", index: number) => {
-    const updatedSections = [...sections];
-    const section = updatedSections[currentSectionIndex];
-    const newIndex = direction === "left" ? index - 1 : index + 1;
-    if (newIndex < 0 || newIndex >= section.fields.length) return;
-    [section.fields[index], section.fields[newIndex]] = [section.fields[newIndex], section.fields[index]];
-    setSections(updatedSections);
-    saveSection(updatedSections[currentSectionIndex]);
-  };
-
-  // --- Apartados ---
-  const addSection = (name: string) => {
-    if (!name.trim()) return;
-    const newSection: Section = {
-      name,
-      fields: [{ name: "titulo", type: "text" as const }],
-      entries: [],
-    };
-    setSections([...sections, newSection]);
-    saveSection(newSection);
-  };
-
-  const deleteSection = (index: number) => {
-    const updated = [...sections];
-    updated.splice(index, 1);
-    setSections(updated);
-    if (currentSectionIndex >= updated.length) setCurrentSectionIndex(updated.length - 1);
-  };
-
-  // --- Filtrado unificado ---
+  // Filtrado global
   const filteredEntries = currentSection.entries.filter((entry) => {
+    // Checkbox global
+    if (checkboxFilter !== "todos") {
+      if (!entry[checkboxFilter]) return false;
+    }
+
+    // Campos de texto
     return currentSection.fields.every((f) => {
-      const filterValue = filter[f.name];
-      if (!filterValue || filterValue === "todos") return true;
-      if (f.type === "checkbox") {
-        const val = entry[f.name] ? "true" : "false";
-        return val === filterValue;
+      if (f.type === "text") {
+        const val = filterText[f.name];
+        if (!val) return true;
+        return String(entry[f.name] || "").toLowerCase().includes(val.toLowerCase());
       }
-      return String(entry[f.name] || "").toLowerCase().includes(filterValue.toLowerCase());
+      return true;
     });
-  }).filter((entry) => {
-    if (typeFilter === "all") return true;
-    if (typeFilter === "digital") return entry.digital;
-    return entry.físico;
   });
 
-  // --- Render principal ---
+  // Todos los checkboxes de la sección
+  const checkboxFields = currentSection.fields.filter((f) => f.type === "checkbox");
+
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-gray-900 text-gray-100 overflow-hidden">
       <aside className="w-full md:w-64 flex-shrink-0">
@@ -221,15 +154,21 @@ export default function App() {
           <h1 className="text-xl sm:text-2xl font-bold">{currentSection.name}</h1>
 
           <div className="flex flex-wrap gap-2 items-center">
-            <select
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value as "all" | "digital" | "físico")}
-              className="p-2 bg-gray-800 border border-gray-600 rounded text-sm sm:text-base"
-            >
-              <option value="all">Todos</option>
-              <option value="digital">Digital</option>
-              <option value="físico">Físico</option>
-            </select>
+            {/* Desplegable global de checkboxes */}
+            {checkboxFields.length > 0 && (
+              <select
+                value={checkboxFilter}
+                onChange={(e) => setCheckboxFilter(e.target.value)}
+                className="p-2 bg-gray-800 border border-gray-600 rounded text-sm sm:text-base"
+              >
+                <option value="todos">Todos</option>
+                {checkboxFields.map((f) => (
+                  <option key={f.name} value={f.name}>
+                    {f.name.charAt(0).toUpperCase() + f.name.slice(1)}
+                  </option>
+                ))}
+              </select>
+            )}
 
             <button
               className="p-2 bg-indigo-600 rounded hover:bg-indigo-700 text-sm sm:text-base"
@@ -252,40 +191,26 @@ export default function App() {
             currentSection={currentSection}
             selectedFieldIndex={null}
             setSelectedFieldIndex={() => {}}
-            addField={addField}
+            addField={() => {}}
             deleteField={() => {}}
             moveField={() => {}}
-            updateField={updateField}
+            updateField={() => {}}
           />
         ) : (
           <>
+            {/* Inputs de texto para filtrar */}
             <div className="mb-4 flex flex-wrap gap-2">
-              {currentSection.fields.map((f) => {
-                if (f.type === "checkbox") {
-                  return (
-                    <select
-                      key={f.name}
-                      value={filter[f.name] || "todos"}
-                      onChange={(e) => setFilter({ ...filter, [f.name]: e.target.value })}
-                      className="p-1 sm:p-2 rounded bg-gray-700 border border-gray-600 text-sm sm:text-base"
-                    >
-                      <option value="todos">Todos</option>
-                      <option value="true">Sí</option>
-                      <option value="false">No</option>
-                    </select>
-                  );
-                } else {
-                  return (
-                    <input
-                      key={f.name}
-                      placeholder={`Filtrar por ${f.name}`}
-                      value={filter[f.name] || ""}
-                      onChange={(e) => setFilter({ ...filter, [f.name]: e.target.value })}
-                      className="p-1 sm:p-2 rounded bg-gray-700 border border-gray-600 text-sm sm:text-base"
-                    />
-                  );
-                }
-              })}
+              {currentSection.fields
+                .filter((f) => f.type === "text")
+                .map((f) => (
+                  <input
+                    key={f.name}
+                    placeholder={`Filtrar por ${f.name}`}
+                    value={filterText[f.name] || ""}
+                    onChange={(e) => setFilterText({ ...filterText, [f.name]: e.target.value })}
+                    className="p-1 sm:p-2 rounded bg-gray-700 border border-gray-600 text-sm sm:text-base"
+                  />
+                ))}
             </div>
 
             {viewMode === "table" ? (
@@ -312,8 +237,8 @@ export default function App() {
         {showSectionEditor && (
           <SectionEditorModal
             sections={sections}
-            addSection={addSection}
-            deleteSection={deleteSection}
+            addSection={(name) => {}}
+            deleteSection={(index) => {}}
             onClose={() => setShowSectionEditor(false)}
           />
         )}
