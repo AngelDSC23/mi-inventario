@@ -44,6 +44,7 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedFieldIndex, setSelectedFieldIndex] = useState<number | null>(null);
 
+  // Estado para manejar la fila nueva editable
   const [newEntry, setNewEntry] = useState<Entry | null>(null);
 
   const currentSection = sections[currentSectionIndex];
@@ -58,12 +59,6 @@ export default function App() {
     }
     fetchSections();
   }, []);
-
-  // limpiar entrada nueva al cambiar vista o sección
-  useEffect(() => {
-    setNewEntry(null);
-    setEditingId(null);
-  }, [currentSectionIndex, viewMode]);
 
   const saveSection = async (section: Section) => {
     const safeId = section.name?.replace(/[.#$/[\]]/g, "_") || crypto.randomUUID();
@@ -92,21 +87,16 @@ export default function App() {
 
   const confirmNewEntry = async () => {
     if (!newEntry) return;
-
-    setSections((prev) => {
-      const updated = [...prev];
-      const sectionCopy = { ...updated[currentSectionIndex] };
-      sectionCopy.entries = [...sectionCopy.entries, newEntry];
-      updated[currentSectionIndex] = sectionCopy;
-      saveSection(sectionCopy);
-      return updated;
-    });
-
+    const updatedSections = [...sections];
+    updatedSections[currentSectionIndex].entries.push(newEntry);
+    setSections(updatedSections);
+    await saveSection(updatedSections[currentSectionIndex]);
     setNewEntry(null);
     setEditingId(null);
   };
 
   const updateEntry = async (id: number, field: string, value: any) => {
+    // Si es la nueva entrada editable
     if (newEntry && newEntry.id === id) {
       setNewEntry({ ...newEntry, [field]: value });
       return;
@@ -128,6 +118,7 @@ export default function App() {
   };
 
   const deleteEntry = async (id: number) => {
+    // Si es la nueva entrada
     if (newEntry && newEntry.id === id) {
       setNewEntry(null);
       return;
@@ -201,16 +192,12 @@ export default function App() {
                 ))}
               </select>
             )}
-
-            {/* Botón centralizado de añadir entrada */}
             <button
               onClick={addEntry}
-              disabled={!!newEntry}
-              className="p-2 bg-green-600 rounded hover:bg-green-700 text-sm sm:text-base disabled:opacity-50"
+              className="p-2 bg-blue-600 rounded hover:bg-blue-700 text-sm sm:text-base"
             >
               ➕ Añadir entrada
             </button>
-
             <button
               className="p-2 bg-indigo-600 rounded hover:bg-indigo-700 text-sm sm:text-base"
               onClick={() => setViewMode((prev) => (prev === "table" ? "card" : "table"))}
@@ -231,10 +218,39 @@ export default function App() {
             currentSection={currentSection}
             selectedFieldIndex={selectedFieldIndex}
             setSelectedFieldIndex={setSelectedFieldIndex}
-            addField={() => {}}
-            deleteField={() => {}}
-            moveField={() => {}}
-            updateField={() => {}}
+            addField={() => {
+              const updatedSections = [...sections];
+              const section = { ...updatedSections[currentSectionIndex] };
+              section.fields.push({ name: `campo${section.fields.length + 1}`, type: "text" });
+              updatedSections[currentSectionIndex] = section;
+              setSections(updatedSections);
+              saveSection(section);
+            }}
+            deleteField={(index) => {
+              const updatedSections = [...sections];
+              const section = { ...updatedSections[currentSectionIndex] };
+              section.fields.splice(index, 1);
+              updatedSections[currentSectionIndex] = section;
+              setSections(updatedSections);
+              saveSection(section);
+            }}
+            moveField={(from, to) => {
+              const updatedSections = [...sections];
+              const section = { ...updatedSections[currentSectionIndex] };
+              const [moved] = section.fields.splice(from, 1);
+              section.fields.splice(to, 0, moved);
+              updatedSections[currentSectionIndex] = section;
+              setSections(updatedSections);
+              saveSection(section);
+            }}
+            updateField={(index, updatedField) => {
+              const updatedSections = [...sections];
+              const section = { ...updatedSections[currentSectionIndex] };
+              section.fields[index] = updatedField;
+              updatedSections[currentSectionIndex] = section;
+              setSections(updatedSections);
+              saveSection(section);
+            }}
           />
         ) : (
           <>
@@ -282,10 +298,27 @@ export default function App() {
         {showSectionEditor && (
           <SectionEditorModal
             sections={sections}
-            addSection={() => {}}
-            deleteSection={() => {}}
-            renameSection={() => {}}
-            moveSection={() => {}}
+            addSection={(newSection) => {
+              const updated = [...sections, newSection];
+              setSections(updated);
+              saveSection(newSection);
+            }}
+            deleteSection={(index) => {
+              const updated = sections.filter((_, i) => i !== index);
+              setSections(updated);
+            }}
+            renameSection={(index, newName) => {
+              const updated = [...sections];
+              updated[index].name = newName;
+              setSections(updated);
+              saveSection(updated[index]);
+            }}
+            moveSection={(from, to) => {
+              const updated = [...sections];
+              const [moved] = updated.splice(from, 1);
+              updated.splice(to, 0, moved);
+              setSections(updated);
+            }}
             onClose={() => setShowSectionEditor(false)}
           />
         )}
