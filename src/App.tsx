@@ -44,7 +44,7 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedFieldIndex, setSelectedFieldIndex] = useState<number | null>(null);
 
-  // Nuevo estado para manejar fila editable
+  // Estado para manejar la fila nueva editable
   const [newEntry, setNewEntry] = useState<Entry | null>(null);
 
   const currentSection = sections[currentSectionIndex];
@@ -70,15 +70,17 @@ export default function App() {
   // Funciones de entrada
   // -------------------
   const addEntry = () => {
+    if (newEntry) return; // ya hay una fila nueva editable
     const nextId =
       currentSection.entries.length > 0
         ? currentSection.entries[currentSection.entries.length - 1].id + 1
         : 1;
-    const entry: Entry = { id: nextId };
+
+    const entry: Entry = { id: nextId, digital: false, físico: false };
     currentSection.fields.forEach((f) => {
-      entry[f.name] = f.type === "checkbox" ? false : "";
+      if (!(f.name in entry)) entry[f.name] = f.type === "checkbox" ? false : "";
     });
-    // Se asigna a newEntry para editar antes de confirmar
+
     setNewEntry(entry);
     setEditingId(nextId);
   };
@@ -94,7 +96,7 @@ export default function App() {
   };
 
   const updateEntry = async (id: number, field: string, value: any) => {
-    // Si es la nueva entrada
+    // Si es la nueva entrada editable
     if (newEntry && newEntry.id === id) {
       setNewEntry({ ...newEntry, [field]: value });
       return;
@@ -233,15 +235,15 @@ export default function App() {
 
             {viewMode === "table" ? (
               <TableView
-                entries={filteredEntries}
+                entries={newEntry ? [newEntry, ...filteredEntries] : filteredEntries}
                 fields={currentSection.fields}
                 updateEntry={updateEntry}
                 deleteEntry={deleteEntry}
                 addEntry={addEntry}
-                confirmNewEntry={confirmNewEntry} // Nuevo
+                confirmNewEntry={confirmNewEntry}
                 editingId={editingId}
                 setEditingId={setEditingId}
-                newEntry={newEntry} // Nuevo
+                isNewEntryPresent={!!newEntry} // Solo indicamos si hay fila nueva
               />
             ) : (
               <CardView
