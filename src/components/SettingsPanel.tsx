@@ -21,7 +21,9 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   moveField,
   updateField,
 }) => {
-  const selectedField = selectedFieldIndex !== null ? currentSection.fields[selectedFieldIndex] : null;
+  const [pendingType, setPendingType] = useState<FieldType>("text"); // tipo a crear
+  const selectedField =
+    selectedFieldIndex !== null ? currentSection.fields[selectedFieldIndex] : null;
 
   const handleRename = (newName: string) => {
     if (selectedFieldIndex !== null) {
@@ -35,15 +37,47 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
     }
   };
 
+  const handleAddField = (name: string) => {
+    const newField: Field = {
+      name,
+      type: pendingType,
+    };
+    addField(newField);
+  };
+
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-semibold mb-2">
         Configurar columnas de {currentSection.name}
       </h2>
 
-      {/* Añadir nuevas columnas */}
+      {/* Selector de tipo de campo a crear */}
+      <div className="flex gap-2 mb-2">
+        <button
+          onClick={() => setPendingType("text")}
+          className={`px-3 py-1 rounded border ${
+            pendingType === "text"
+              ? "bg-blue-600 border-blue-400 text-white"
+              : "bg-gray-700 border-gray-600 text-gray-200"
+          }`}
+        >
+          Texto
+        </button>
+        <button
+          onClick={() => setPendingType("checkbox")}
+          className={`px-3 py-1 rounded border ${
+            pendingType === "checkbox"
+              ? "bg-blue-600 border-blue-400 text-white"
+              : "bg-gray-700 border-gray-600 text-gray-200"
+          }`}
+        >
+          Checkbox
+        </button>
+      </div>
+
+      {/* Añadir nueva columna */}
       <TagInput
-        onAdd={(name) => addField({ name, type: "text" })}
+        onAdd={handleAddField}
         placeholder="Nueva columna"
       />
 
@@ -52,7 +86,9 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
         {currentSection.fields.map((f, i) => (
           <button
             key={i}
-            onClick={() => setSelectedFieldIndex(selectedFieldIndex === i ? null : i)}
+            onClick={() =>
+              setSelectedFieldIndex(selectedFieldIndex === i ? null : i)
+            }
             className={`p-2 rounded border ${
               selectedFieldIndex === i
                 ? "bg-blue-600 border-blue-400"
