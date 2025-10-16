@@ -6,9 +6,9 @@ interface CardViewProps {
   fields: Field[];
   updateEntry: (id: number, field: string, value: any) => void;
   deleteEntry: (id: number) => void;
-  newEntry?: Entry | null;
-  setNewEntry?: (entry: Entry | null) => void;
-  confirmNewEntry?: () => void;
+  newEntry: Entry | null;
+  setNewEntry: (entry: Entry | null) => void;
+  confirmNewEntry: () => void;
 }
 
 const CardView: React.FC<CardViewProps> = ({
@@ -17,101 +17,69 @@ const CardView: React.FC<CardViewProps> = ({
   updateEntry,
   deleteEntry,
   newEntry,
-  setNewEntry,
   confirmNewEntry,
 }) => {
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      {/* Tarjeta editable */}
-      {newEntry && setNewEntry && confirmNewEntry && (
-        <div className="bg-gray-700 p-4 rounded-lg shadow flex flex-col gap-2">
-          {fields.map((f) => {
-            const value = newEntry[f.name] || "";
-            return f.type === "checkbox" ? (
-              <label key={f.name} className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={!!value}
-                  onChange={(e) => setNewEntry({ ...newEntry, [f.name]: e.target.checked })}
-                  className="w-5 h-5 accent-blue-500 cursor-pointer"
-                />
-                {f.name}
-              </label>
-            ) : (
-              <input
-                key={f.name}
-                placeholder={f.name}
-                value={value}
-                onChange={(e) => setNewEntry({ ...newEntry, [f.name]: e.target.value })}
-                className="p-1 rounded bg-gray-700 border border-gray-600 text-sm"
-              />
-            );
-          })}
-          <div className="flex gap-2 mt-1">
-            <button
-              onClick={confirmNewEntry}
-              className="p-2 bg-green-600 hover:bg-green-700 text-white rounded flex-1"
-            >
-              ✅ Confirmar entrada
-            </button>
-            <button
-              onClick={() => setNewEntry && setNewEntry(null)}
-              className="p-2 bg-red-600 hover:bg-red-700 text-white rounded flex-1"
-            >
-              ❌ Cancelar
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Tarjetas existentes */}
-      {entries.map((entry) => (
-        <div
-          key={entry.id}
-          className="bg-gray-800 p-4 rounded-lg shadow hover:shadow-lg transition-shadow"
-        >
-          <div className="flex justify-between items-center mb-2">
-            <h2 className="font-bold text-lg">ID: {entry.id}</h2>
-            <button
-              onClick={() => deleteEntry(entry.id)}
-              className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded"
-            >
-              🗑
-            </button>
-          </div>
-
-          <div className="flex flex-col gap-2">
-            {fields.map((f) => {
-              const value = entry[f.name];
-              if (f.type === "checkbox") {
-                return (
-                  <div key={f.name} className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={!!value}
-                      onChange={(ev) => updateEntry(entry.id, f.name, ev.target.checked)}
-                      className="w-5 h-5 accent-blue-500 cursor-pointer"
-                    />
-                    <label className="capitalize">{f.name}</label>
-                  </div>
-                );
-              } else {
-                return (
-                  <div key={f.name} className="flex flex-col">
-                    <label className="capitalize text-sm text-gray-400">{f.name}</label>
-                    <input
-                      type="text"
-                      value={value || ""}
-                      onChange={(ev) => updateEntry(entry.id, f.name, ev.target.value)}
-                      className="p-1 rounded bg-gray-700 border border-gray-600 text-sm"
-                    />
-                  </div>
-                );
-              }
-            })}
-          </div>
+  const renderCard = (entry: Entry, isNew: boolean = false) => (
+    <div
+      key={entry.id}
+      className="bg-gray-800 rounded-lg p-4 shadow-md border border-gray-700"
+    >
+      <div className="flex justify-between mb-2">
+        <span className="font-bold text-lg">#{entry.id}</span>
+        {!isNew && (
+          <button
+            onClick={() => deleteEntry(entry.id)}
+            className="text-red-500 hover:text-red-600"
+          >
+            🗑
+          </button>
+        )}
+      </div>
+      {fields.map((f) => (
+        <div key={f.name} className="mb-2">
+          <label className="block text-sm text-gray-400 mb-1 capitalize">
+            {f.name}
+          </label>
+          {f.type === "checkbox" ? (
+            <input
+              type="checkbox"
+              checked={!!entry[f.name]}
+              onChange={(e) => updateEntry(entry.id, f.name, e.target.checked)}
+              className="w-5 h-5 accent-blue-500"
+            />
+          ) : (
+            <input
+              type="text"
+              value={entry[f.name] || ""}
+              onChange={(e) => updateEntry(entry.id, f.name, e.target.value)}
+              className="w-full p-1 rounded bg-gray-700 border border-gray-600"
+            />
+          )}
         </div>
       ))}
+      {isNew && (
+        <div className="flex gap-2 justify-end mt-3">
+          <button
+            onClick={confirmNewEntry}
+            className="bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700 active:scale-95 transition-transform"
+          >
+            ✅ Confirmar
+          </button>
+          <button
+            onClick={() => deleteEntry(entry.id)}
+            className="bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700 active:scale-95 transition-transform"
+          >
+            ❌ Cancelar
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {newEntry && renderCard(newEntry, true)}
+      {entries.map((e) => renderCard(e))}
     </div>
   );
 };
