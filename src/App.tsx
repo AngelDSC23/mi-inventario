@@ -179,7 +179,7 @@ export default function App() {
     if (currentSectionIndex >= updated.length) setCurrentSectionIndex(updated.length - 1);
   };
 
-  // --- Filtrado por texto y checkbox ---
+  // --- Filtrado por texto y checkbox 
   const filteredEntries = currentSection.entries.filter((entry) => {
     return currentSection.fields.every((f) => {
       const filterValue = filter[f.name];
