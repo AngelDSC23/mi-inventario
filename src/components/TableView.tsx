@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef } from "react";
 import { Entry, Field } from "../types";
 
 interface TableViewProps {
@@ -22,16 +22,11 @@ const TableView: React.FC<TableViewProps> = ({
 }) => {
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
-  // Manejo de navegación con teclado
   const handleKeyNavigation = (
     e: React.KeyboardEvent<HTMLInputElement>,
     entryIndex: number,
     fieldIndex: number
   ) => {
-    if (!["Enter", "ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp"].includes(e.key))
-      return;
-
-    e.preventDefault();
     const rows = entries.length;
     const cols = fields.length;
     let nextRow = entryIndex;
@@ -42,7 +37,6 @@ const TableView: React.FC<TableViewProps> = ({
     if (e.key === "ArrowDown") nextRow++;
     if (e.key === "ArrowUp") nextRow--;
 
-    // Ajuste de límites y wrap-around
     if (nextCol >= cols) { nextCol = 0; nextRow++; }
     if (nextCol < 0) { nextCol = cols - 1; nextRow--; }
     if (nextRow < 0) nextRow = 0;
@@ -50,28 +44,8 @@ const TableView: React.FC<TableViewProps> = ({
 
     const nextKey = `${entries[nextRow]?.id}-${fields[nextCol]?.name}`;
     const nextInput = inputRefs.current[nextKey];
-    if (nextInput) {
-      nextInput.focus();
-      const val = nextInput.value;
-      nextInput.setSelectionRange(val.length, val.length);
-    }
+    if (nextInput) nextInput.focus();
   };
-
-  // Auto-focus en la entrada activa
-  useEffect(() => {
-    if (editingId !== null) {
-      const editingIndex = entries.findIndex((e) => e.id === editingId);
-      if (editingIndex >= 0) {
-        const firstFieldKey = `${editingId}-${fields[0].name}`;
-        const firstInput = inputRefs.current[firstFieldKey];
-        if (firstInput && document.activeElement !== firstInput) {
-          firstInput.focus();
-          const val = firstInput.value;
-          firstInput.setSelectionRange(val.length, val.length);
-        }
-      }
-    }
-  }, [editingId, entries, fields]);
 
   return (
     <>
@@ -104,8 +78,6 @@ const TableView: React.FC<TableViewProps> = ({
                               checked={!!value}
                               disabled={!isEditing}
                               onChange={(ev) => updateEntry(e.id, f.name, ev.target.checked)}
-                              ref={(el) => { inputRefs.current[refKey] = el; }}
-                              onKeyDown={(ev) => handleKeyNavigation(ev, entryIndex, fieldIndex)}
                               className="w-5 h-5 accent-blue-500 cursor-pointer"
                             />
                           ) : (
