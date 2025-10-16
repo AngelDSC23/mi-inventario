@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef } from "react";
 import { Entry, Field } from "../types";
 
 interface TableViewProps {
@@ -25,8 +25,7 @@ const TableView: React.FC<TableViewProps> = ({
   const handleKeyNavigation = (
     e: React.KeyboardEvent<HTMLInputElement>,
     entryIndex: number,
-    fieldIndex: number,
-    entryId: number
+    fieldIndex: number
   ) => {
     const rows = entries.length;
     const cols = fields.length;
@@ -46,23 +45,7 @@ const TableView: React.FC<TableViewProps> = ({
     const nextKey = `${entries[nextRow]?.id}-${fields[nextCol]?.name}`;
     const nextInput = inputRefs.current[nextKey];
     if (nextInput) nextInput.focus();
-    else setEditingId(null);
   };
-
-  useEffect(() => {
-    if (editingId !== null) {
-      const editingIndex = entries.findIndex((e) => e.id === editingId);
-      if (editingIndex >= 0) {
-        const firstFieldKey = `${editingId}-${fields[0].name}`;
-        const firstInput = inputRefs.current[firstFieldKey];
-        if (firstInput && document.activeElement !== firstInput) {
-          firstInput.focus();
-          const val = firstInput.value;
-          firstInput.setSelectionRange(val.length, val.length);
-        }
-      }
-    }
-  }, [editingId, entries, fields]);
 
   return (
     <>
@@ -78,12 +61,12 @@ const TableView: React.FC<TableViewProps> = ({
             </tr>
           </thead>
           <tbody>
-            {entries.map((e) => {
+            {entries.map((e, entryIndex) => {
               const isEditing = editingId === e.id;
               return (
                 <tr key={e.id} className="hover:bg-gray-800">
                   <td className="p-2 border">{e.id}</td>
-                  {fields.map((f) => {
+                  {fields.map((f, fieldIndex) => {
                     const refKey = `${e.id}-${f.name}`;
                     const value = e[f.name];
                     return (
@@ -99,11 +82,11 @@ const TableView: React.FC<TableViewProps> = ({
                             />
                           ) : (
                             <input
-                              ref={el => { inputRefs.current[refKey] = el || null; }}
+                              ref={(el) => { inputRefs.current[refKey] = el; }}
                               disabled={!isEditing}
                               value={value || ""}
                               onChange={(ev) => updateEntry(e.id, f.name, ev.target.value)}
-                              onKeyDown={(ev) => handleKeyNavigation(ev, entries.findIndex(en => en.id === e.id), fields.findIndex(fi => fi.name === f.name), e.id)}
+                              onKeyDown={(ev) => handleKeyNavigation(ev, entryIndex, fieldIndex)}
                               className="w-full p-1 rounded bg-gray-700 border border-gray-600"
                             />
                           )}
