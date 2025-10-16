@@ -81,7 +81,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
         placeholder="Nueva columna"
       />
 
-      {/* Lista horizontal de etiquetas */}
+      {/* Lista horizontal de campos */}
       <div className="flex gap-2 flex-wrap">
         {currentSection.fields.map((f, i) => (
           <button
@@ -100,7 +100,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
         ))}
       </div>
 
-      {/* Panel de edición de la etiqueta seleccionada */}
+      {/* Panel de edición del campo seleccionado */}
       {selectedField && selectedFieldIndex !== null && (
         <div className="bg-gray-800 p-4 rounded-xl border border-gray-700 space-y-3">
           <input
