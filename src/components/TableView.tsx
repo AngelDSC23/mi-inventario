@@ -9,6 +9,9 @@ interface TableViewProps {
   addEntry: () => void;
   editingId: number | null;
   setEditingId: (id: number | null) => void;
+  newEntry?: Entry | null;
+  setNewEntry?: (entry: Entry | null) => void;
+  confirmNewEntry?: () => void;
 }
 
 const TableView: React.FC<TableViewProps> = ({
@@ -19,6 +22,9 @@ const TableView: React.FC<TableViewProps> = ({
   addEntry,
   editingId,
   setEditingId,
+  newEntry,
+  setNewEntry,
+  confirmNewEntry,
 }) => {
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
@@ -48,22 +54,9 @@ const TableView: React.FC<TableViewProps> = ({
   };
 
   return (
-    <div className="flex flex-col">
-      {/* ---------- Sección superior fija ---------- */}
-      <div className="sticky top-0 z-10 bg-gray-800 p-2 flex flex-wrap gap-2 items-center border-b border-gray-700">
-        {/* Aquí puedes agregar filtros y botones de ajustes/visión */}
-        <button
-          onClick={addEntry}
-          className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-md active:scale-95 transition-transform"
-        >
-          Añadir entrada
-        </button>
-        {/* Ejemplo de espacio para futuros botones o filtros */}
-      </div>
-
-      {/* ---------- Contenedor de tabla desplazable ---------- */}
-      <div className="table-container overflow-x-auto rounded-lg border border-gray-700 mt-2">
-        <table className="min-w-full border border-gray-700 mb-4">
+    <>
+      <div className="table-container overflow-x-auto rounded-lg border border-gray-700 mb-4">
+        <table className="min-w-full border border-gray-700">
           <thead className="bg-gray-800">
             <tr>
               <th className="p-2 border">ID</th>
@@ -74,6 +67,43 @@ const TableView: React.FC<TableViewProps> = ({
             </tr>
           </thead>
           <tbody>
+            {/* ----------------- Fila de entrada rápida ----------------- */}
+            {newEntry && setNewEntry && confirmNewEntry && (
+              <tr className="bg-gray-700">
+                <td className="p-2 border">Nuevo</td>
+                {fields.map((f) => (
+                  <td key={f.name} className="p-2 border">
+                    {f.type === "checkbox" ? (
+                      <input
+                        type="checkbox"
+                        checked={!!newEntry[f.name]}
+                        onChange={(e) =>
+                          setNewEntry({ ...newEntry, [f.name]: e.target.checked })
+                        }
+                        className="w-5 h-5 accent-blue-500 cursor-pointer"
+                      />
+                    ) : (
+                      <input
+                        value={newEntry[f.name] || ""}
+                        onChange={(e) =>
+                          setNewEntry({ ...newEntry, [f.name]: e.target.value })
+                        }
+                        className="w-full p-1 rounded bg-gray-700 border border-gray-600"
+                      />
+                    )}
+                  </td>
+                ))}
+                <td className="p-2 border flex gap-2 justify-center">
+                  <button
+                    onClick={confirmNewEntry}
+                    className="flex items-center justify-center min-w-[36px] min-h-[36px] bg-green-600 text-white rounded-md hover:bg-green-700 active:scale-95 transition-transform"
+                  >
+                    ➕
+                  </button>
+                </td>
+              </tr>
+            )}
+
             {entries.map((e, entryIndex) => {
               const isEditing = editingId === e.id;
               return (
@@ -127,7 +157,14 @@ const TableView: React.FC<TableViewProps> = ({
           </tbody>
         </table>
       </div>
-    </div>
+
+      <button
+        onClick={addEntry}
+        className="p-2 mt-2 w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-md active:scale-95 transition-transform"
+      >
+        Añadir entrada
+      </button>
+    </>
   );
 };
 
