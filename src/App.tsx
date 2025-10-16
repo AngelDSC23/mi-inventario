@@ -45,7 +45,6 @@ export default function App() {
 
   const currentSection = sections[currentSectionIndex];
 
-  // Cargar datos de Firestore
   useEffect(() => {
     async function fetchSections() {
       const querySnapshot = await getDocs(collection(db, "sections"));
@@ -63,73 +62,58 @@ export default function App() {
     await setDoc(sectionRef, section, { merge: true });
   };
 
-  // Entradas
   const addEntry = async () => {
     const nextId =
       currentSection.entries.length > 0
         ? currentSection.entries[currentSection.entries.length - 1].id + 1
         : 1;
 
-    // Crear nueva entrada con propiedades obligatorias
     const newEntry: Entry = { id: nextId, digital: false, físico: false };
 
-    // Inicializar campos dinámicos de la sección
     currentSection.fields.forEach((f) => {
-      if (!(f.name in newEntry)) {
-        newEntry[f.name] = f.type === "checkbox" ? false : "";
-      }
+      if (!(f.name in newEntry)) newEntry[f.name] = f.type === "checkbox" ? false : "";
     });
 
-    // Actualizar estado y seleccionar nueva entrada para edición
     const updatedSections = [...sections];
     updatedSections[currentSectionIndex].entries.push(newEntry);
     setSections(updatedSections);
     setEditingId(nextId);
-
-    // Guardar en Firestore
     await saveSection(updatedSections[currentSectionIndex]);
   };
 
   const updateEntry = async (id: number, field: string, value: any) => {
-    const updatedSections = [...sections];
-    const idx = updatedSections[currentSectionIndex].entries.findIndex((e) => e.id === id);
-    if (idx > -1) {
-      updatedSections[currentSectionIndex].entries[idx][field] = value;
-      setSections(updatedSections);
-      await saveSection(updatedSections[currentSectionIndex]);
-    }
-  };
-
-  const addField = async (newField: Field) => {
     setSections((prevSections) => {
-      return prevSections.map((section, index) => {
-        if (index === currentSectionIndex) {
-          // Evitar duplicados por nombre
-          if (section.fields.some((f) => f.name === newField.name)) return section;
-
-          // Añadir el nuevo campo
-          const updatedFields = [...section.fields, newField];
-
-          // Inicializar el campo en todas las entradas existentes
-          const updatedEntries = section.entries.map((entry) => ({
-            ...entry,
-            [newField.name]: newField.type === "checkbox" ? false : "",
-          }));
-
-          const updatedSection = {
-            ...section,
-            fields: updatedFields,
-            entries: updatedEntries,
-          };
-
-          // Guardar el cambio
+      return prevSections.map((section, sIdx) => {
+        if (sIdx === currentSectionIndex) {
+          const updatedEntries = section.entries.map((entry) =>
+            entry.id === id ? { ...entry, [field]: value } : entry
+          );
+          const updatedSection = { ...section, entries: updatedEntries };
           saveSection(updatedSection);
-
           return updatedSection;
         }
         return section;
       });
     });
+  };
+
+  const addField = async (newField: Field) => {
+    setSections((prevSections) =>
+      prevSections.map((section, index) => {
+        if (index === currentSectionIndex) {
+          if (section.fields.some((f) => f.name === newField.name)) return section;
+          const updatedFields = [...section.fields, newField];
+          const updatedEntries = section.entries.map((entry) => ({
+            ...entry,
+            [newField.name]: newField.type === "checkbox" ? false : "",
+          }));
+          const updatedSection = { ...section, fields: updatedFields, entries: updatedEntries };
+          saveSection(updatedSection);
+          return updatedSection;
+        }
+        return section;
+      })
+    );
   };
 
   const deleteEntry = async (id: number) => {
@@ -142,25 +126,17 @@ export default function App() {
     await saveSection(updatedSections[currentSectionIndex]);
   };
 
-  // Filtrado global
   const filteredEntries = currentSection.entries.filter((entry) => {
-    // Checkbox global
-    if (checkboxFilter !== "todos") {
-      if (!entry[checkboxFilter]) return false;
-    }
-
-    // Campos de texto
+    if (checkboxFilter !== "todos" && !entry[checkboxFilter]) return false;
     return currentSection.fields.every((f) => {
       if (f.type === "text") {
         const val = filterText[f.name];
-        if (!val) return true;
-        return String(entry[f.name] || "").toLowerCase().includes(val.toLowerCase());
+        return !val || String(entry[f.name] || "").toLowerCase().includes(val.toLowerCase());
       }
       return true;
     });
   });
 
-  // Todos los checkboxes de la sección
   const checkboxFields = currentSection.fields.filter((f) => f.type === "checkbox");
 
   return (
@@ -190,11 +166,8 @@ export default function App() {
           >
             ☰
           </button>
-
           <h1 className="text-xl sm:text-2xl font-bold">{currentSection.name}</h1>
-
           <div className="flex flex-wrap gap-2 items-center">
-            {/* Desplegable global de checkboxes */}
             {checkboxFields.length > 0 && (
               <select
                 value={checkboxFilter}
@@ -209,14 +182,12 @@ export default function App() {
                 ))}
               </select>
             )}
-
             <button
               className="p-2 bg-indigo-600 rounded hover:bg-indigo-700 text-sm sm:text-base"
               onClick={() => setViewMode((prev) => (prev === "table" ? "card" : "table"))}
             >
               {viewMode === "table" ? "Ver tarjetas" : "Ver tabla"}
             </button>
-
             <button
               className="p-2 bg-blue-600 rounded hover:bg-blue-700 text-sm sm:text-base"
               onClick={() => setShowSettings(!showSettings)}
@@ -238,7 +209,6 @@ export default function App() {
           />
         ) : (
           <>
-            {/* Inputs de texto para filtrar */}
             <div className="mb-4 flex flex-wrap gap-2">
               {currentSection.fields
                 .filter((f) => f.type === "text")
