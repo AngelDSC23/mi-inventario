@@ -48,8 +48,21 @@ const TableView: React.FC<TableViewProps> = ({
   };
 
   return (
-    <>
-      <div className="table-container overflow-x-auto rounded-lg border border-gray-700">
+    <div className="flex flex-col">
+      {/* ---------- Sección superior fija ---------- */}
+      <div className="sticky top-0 z-10 bg-gray-800 p-2 flex flex-wrap gap-2 items-center border-b border-gray-700">
+        {/* Aquí puedes agregar filtros y botones de ajustes/visión */}
+        <button
+          onClick={addEntry}
+          className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-md active:scale-95 transition-transform"
+        >
+          Añadir entrada
+        </button>
+        {/* Ejemplo de espacio para futuros botones o filtros */}
+      </div>
+
+      {/* ---------- Contenedor de tabla desplazable ---------- */}
+      <div className="table-container overflow-x-auto rounded-lg border border-gray-700 mt-2">
         <table className="min-w-full border border-gray-700 mb-4">
           <thead className="bg-gray-800">
             <tr>
@@ -114,14 +127,7 @@ const TableView: React.FC<TableViewProps> = ({
           </tbody>
         </table>
       </div>
-
-      <button
-        onClick={addEntry}
-        className="p-2 mt-2 w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-md active:scale-95 transition-transform"
-      >
-        Añadir entrada
-      </button>
-    </>
+    </div>
   );
 };
 
