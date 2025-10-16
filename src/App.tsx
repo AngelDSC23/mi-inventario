@@ -234,25 +234,30 @@ export default function App() {
             </div>
 
             {viewMode === "table" ? (
-              <TableView
-                entries={newEntry ? [newEntry, ...filteredEntries] : filteredEntries}
-                fields={currentSection.fields}
-                updateEntry={updateEntry}
-                deleteEntry={deleteEntry}
-                addEntry={addEntry}
-                confirmNewEntry={confirmNewEntry}
-                editingId={editingId}
-                setEditingId={setEditingId}
-                isNewEntryPresent={!!newEntry} // Solo indicamos si hay fila nueva
-              />
-            ) : (
-              <CardView
-                entries={filteredEntries}
-                fields={currentSection.fields}
-                updateEntry={updateEntry}
-                deleteEntry={deleteEntry}
-              />
-            )}
+  <TableView
+    entries={filteredEntries} // no mezclamos newEntry aquí
+    fields={currentSection.fields}
+    updateEntry={updateEntry}
+    deleteEntry={deleteEntry}
+    addEntry={addEntry}
+    confirmNewEntry={confirmNewEntry}
+    editingId={editingId}
+    setEditingId={setEditingId}
+    isNewEntryPresent={!!newEntry} // flag para ocultar botón inferior
+    newEntry={newEntry}             // fila editable real
+  />
+) : (
+  <CardView
+    entries={filteredEntries}
+    fields={currentSection.fields}
+    updateEntry={updateEntry}
+    deleteEntry={deleteEntry}
+    newEntry={newEntry}              // fila editable
+    setNewEntry={setNewEntry}        // para actualizarla
+    confirmNewEntry={confirmNewEntry} // para confirmar
+  />
+)}
+
           </>
         )}
 
