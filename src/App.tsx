@@ -1,187 +1,323 @@
 import React, { useState, useEffect } from "react";
+import { Entry, Section, Field } from "./types";
 import Sidebar from "./components/Sidebar";
-import CardView from "./components/CardView";
-import TableView from "./components/TableView";
-import SettingsPanel from "./components/SettingsPanel";
 import SectionEditorModal from "./components/SectionEditorModal";
-import { Entry, Field } from "./types";
-import "./index.css";
+import SettingsPanel from "./components/SettingsPanel";
+import TableView from "./components/TableView";
+import CardView from "./components/CardView";
+import { collection, doc, setDoc, getDocs } from "firebase/firestore";
+import { db } from "./firebase-config";
 
-const App: React.FC = () => {
-  const [entries, setEntries] = useState<Entry[]>([]);
-  const [fields, setFields] = useState<Field[]>([]);
-  const [filters, setFilters] = useState<Record<string, any>>({});
-  const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
+// --- Valores por defecto 
+const defaultSections: Section[] = [
+  {
+    name: "Libros",
+    fields: [
+      { name: "titulo", type: "text" as const },
+      { name: "autor", type: "text" as const },
+      { name: "año", type: "text" as const },
+      { name: "edición", type: "text" as const },
+    ],
+    entries: [],
+  },
+  {
+    name: "CDs",
+    fields: [
+      { name: "titulo", type: "text" as const },
+      { name: "artista", type: "text" as const },
+      { name: "año", type: "text" as const },
+    ],
+    entries: [],
+  },
+  {
+    name: "Guiones",
+    fields: [
+      { name: "titulo", type: "text" as const },
+      { name: "autor", type: "text" as const },
+      { name: "año", type: "text" as const },
+    ],
+    entries: [],
+  },
+];
+
+export default function App() {
+  const [sections, setSections] = useState<Section[]>(defaultSections);
+  const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
   const [showSectionEditor, setShowSectionEditor] = useState(false);
+  const [viewMode, setViewMode] = useState<"table" | "card">("table");
+  const [filter, setFilter] = useState<{ [key: string]: string }>({});
+  const [typeFilter, setTypeFilter] = useState<"all" | "digital" | "físico">("all");
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Cargar datos de ejemplo o desde almacenamiento si lo tuvieras
+  const currentSection = sections[currentSectionIndex];
+
+  // --- Cargar datos desde Firestore ---
   useEffect(() => {
-    const storedEntries = localStorage.getItem("entries");
-    if (storedEntries) setEntries(JSON.parse(storedEntries));
-
-    const storedFields = localStorage.getItem("fields");
-    if (storedFields) setFields(JSON.parse(storedFields));
+    async function fetchSections() {
+      const querySnapshot = await getDocs(collection(db, "sections"));
+      if (!querySnapshot.empty) {
+        const loadedSections = querySnapshot.docs.map((doc) => doc.data());
+        setSections(loadedSections as Section[]);
+      }
+    }
+    fetchSections();
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem("entries", JSON.stringify(entries));
-  }, [entries]);
-
-  useEffect(() => {
-    localStorage.setItem("fields", JSON.stringify(fields));
-  }, [fields]);
-
-  // --- Filtrado general ---
-  const handleFilterChange = (field: string, value: any) => {
-    setFilters((prev) => ({ ...prev, [field]: value }));
+  const saveSection = async (section: Section) => {
+    const safeId = section.name?.replace(/[.#$/[\]]/g, "_") || crypto.randomUUID();
+    const sectionRef = doc(db, "sections", safeId);
+    await setDoc(sectionRef, section, { merge: true });
   };
 
-  const filteredEntries = entries.filter((entry) => {
-    return fields.every((field) => {
-      const filterValue = filters[field.name];
-      if (!filterValue) return true;
-      const entryValue = entry[field.name];
+  // --- Entradas ---
+  const addEntry = async () => {
+    const nextId = currentSection.entries.length > 0
+      ? currentSection.entries[currentSection.entries.length - 1].id + 1
+      : 1;
 
-      if (field.type === "text") {
-        return entryValue
-          ?.toString()
-          .toLowerCase()
-          .includes(filterValue.toLowerCase());
+    const newEntry: Entry = { id: nextId, digital: false, físico: false };
+    currentSection.fields.forEach((f) => {
+      if (!(f.name in newEntry)) {
+        newEntry[f.name] = f.type === "checkbox" ? false : "";
       }
-
-      if (field.type === "checkbox") {
-        return entryValue === true ? filterValue === true : !filterValue;
-      }
-
-      return true;
     });
+
+    const updatedSections = [...sections];
+    updatedSections[currentSectionIndex].entries.push(newEntry);
+    setSections(updatedSections);
+    setEditingId(nextId);
+
+    await saveSection(updatedSections[currentSectionIndex]);
+  };
+
+  const updateEntry = async (id: number, field: string, value: any) => {
+    const updatedSections = [...sections];
+    const idx = updatedSections[currentSectionIndex].entries.findIndex((e) => e.id === id);
+    if (idx > -1) {
+      updatedSections[currentSectionIndex].entries[idx][field] = value;
+      setSections(updatedSections);
+      await saveSection(updatedSections[currentSectionIndex]);
+    }
+  };
+
+  const deleteEntry = async (id: number) => {
+    const updatedSections = [...sections];
+    updatedSections[currentSectionIndex].entries = updatedSections[currentSectionIndex].entries.filter((e) => e.id !== id);
+    setSections(updatedSections);
+    if (editingId === id) setEditingId(null);
+    await saveSection(updatedSections[currentSectionIndex]);
+  };
+
+  // --- Columnas ---
+  const addField = (field: Field) => {
+    if (!field.name.trim()) return;
+    const updatedSections = [...sections];
+    const section = updatedSections[currentSectionIndex];
+    if (!section.fields.some((f) => f.name === field.name)) {
+      section.fields.push(field);
+      section.entries.forEach((entry) => {
+        entry[field.name] = field.type === "checkbox" ? false : "";
+      });
+      setSections(updatedSections);
+      saveSection(updatedSections[currentSectionIndex]);
+    }
+  };
+
+  const updateField = (index: number, updates: Partial<Field>) => {
+    const updatedSections = [...sections];
+    const section = updatedSections[currentSectionIndex];
+    section.fields[index] = { ...section.fields[index], ...updates };
+    setSections(updatedSections);
+    saveSection(updatedSections[currentSectionIndex]);
+  };
+
+  const deleteField = (index: number) => {
+    const updatedSections = [...sections];
+    const section = updatedSections[currentSectionIndex];
+    const field = section.fields[index];
+    section.fields.splice(index, 1);
+    section.entries.forEach((entry) => delete entry[field.name]);
+    setSections(updatedSections);
+    saveSection(updatedSections[currentSectionIndex]);
+  };
+
+  const moveField = (direction: "left" | "right", index: number) => {
+    const updatedSections = [...sections];
+    const section = updatedSections[currentSectionIndex];
+    const newIndex = direction === "left" ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= section.fields.length) return;
+    [section.fields[index], section.fields[newIndex]] = [section.fields[newIndex], section.fields[index]];
+    setSections(updatedSections);
+    saveSection(updatedSections[currentSectionIndex]);
+  };
+
+  // --- Apartados ---
+  const addSection = (name: string) => {
+    if (!name.trim()) return;
+    const newSection: Section = {
+      name,
+      fields: [{ name: "titulo", type: "text" as const }],
+      entries: [],
+    };
+    setSections([...sections, newSection]);
+    saveSection(newSection);
+  };
+
+  const deleteSection = (index: number) => {
+    const updated = [...sections];
+    updated.splice(index, 1);
+    setSections(updated);
+    if (currentSectionIndex >= updated.length) setCurrentSectionIndex(updated.length - 1);
+  };
+
+  // --- Filtrado unificado ---
+  const filteredEntries = currentSection.entries.filter((entry) => {
+    return currentSection.fields.every((f) => {
+      const filterValue = filter[f.name];
+      if (!filterValue || filterValue === "todos") return true;
+      if (f.type === "checkbox") {
+        const val = entry[f.name] ? "true" : "false";
+        return val === filterValue;
+      }
+      return String(entry[f.name] || "").toLowerCase().includes(filterValue.toLowerCase());
+    });
+  }).filter((entry) => {
+    if (typeFilter === "all") return true;
+    if (typeFilter === "digital") return entry.digital;
+    return entry.físico;
   });
 
-  // --- Actualizar entrada individual ---
-  const updateEntry = (id: number, field: string, value: any) => {
-    setEntries((prev) =>
-      prev.map((e) => (e.id === id ? { ...e, [field]: value } : e))
-    );
-  };
-
-  const deleteEntry = (id: number) => {
-    setEntries((prev) => prev.filter((e) => e.id !== id));
-  };
-
-  // --- Agrupación de tipos de campo ---
-  const textFields = fields.filter((f) => f.type === "text");
-  const checkboxFields = fields.filter((f) => f.type === "checkbox");
-
-  // --- Limpieza de filtros checkbox (Todos) ---
-  const clearCheckboxFilters = () => {
-    const cleared = { ...filters };
-    checkboxFields.forEach((f) => (cleared[f.name] = false));
-    setFilters(cleared);
-  };
-
+  // --- Render principal ---
   return (
-    <div className="flex h-screen">
-      <Sidebar onAddEntry={() => setShowSectionEditor(true)} />
+    <div className="flex flex-col md:flex-row min-h-screen bg-gray-900 text-gray-100 overflow-hidden">
+      <aside className="w-full md:w-64 flex-shrink-0">
+        <Sidebar
+          sections={sections}
+          currentSectionIndex={currentSectionIndex}
+          setCurrentSectionIndex={setCurrentSectionIndex}
+          onEditSections={() => setShowSectionEditor(true)}
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+        />
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+      </aside>
 
-      <main className="flex-1 p-4 overflow-auto">
-        {/* 🔍 Bloque de filtros unificado */}
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          {/* Filtros de texto */}
-          {textFields.map((field) => (
-            <input
-              key={field.name}
-              type="text"
-              placeholder={field.label}
-              value={filters[field.name] || ""}
-              onChange={(e) => handleFilterChange(field.name, e.target.value)}
-              className="border rounded p-1 text-sm"
-            />
-          ))}
+      <main className="flex-1 p-4 sm:p-6 overflow-auto app-container">
+        <div className="flex flex-wrap justify-between items-center mb-4 gap-2">
+          <button
+            className="md:hidden p-2 bg-gray-800 rounded hover:bg-gray-700"
+            onClick={() => setSidebarOpen(true)}
+          >
+            ☰
+          </button>
 
-          {/* Menú desplegable de filtros checkbox */}
-          <div className="relative">
-            <button
-              onClick={(e) => {
-                const menu = e.currentTarget.nextElementSibling as HTMLElement;
-                menu.classList.toggle("hidden");
-              }}
-              className="border px-3 py-1 rounded bg-gray-100 hover:bg-gray-200 text-sm"
+          <h1 className="text-xl sm:text-2xl font-bold">{currentSection.name}</h1>
+
+          <div className="flex flex-wrap gap-2 items-center">
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value as "all" | "digital" | "físico")}
+              className="p-2 bg-gray-800 border border-gray-600 rounded text-sm sm:text-base"
             >
-              Filtros
+              <option value="all">Todos</option>
+              <option value="digital">Digital</option>
+              <option value="físico">Físico</option>
+            </select>
+
+            <button
+              className="p-2 bg-indigo-600 rounded hover:bg-indigo-700 text-sm sm:text-base"
+              onClick={() => setViewMode((prev) => (prev === "table" ? "card" : "table"))}
+            >
+              {viewMode === "table" ? "Ver tarjetas" : "Ver tabla"}
             </button>
 
-            <div className="hidden absolute right-0 mt-2 w-48 bg-white border rounded-lg shadow-lg z-10">
-              <div
-                className="cursor-pointer hover:bg-gray-100 p-2 text-sm"
-                onClick={clearCheckboxFilters}
-              >
-                Todos
-              </div>
-              {checkboxFields.map((field) => (
-                <label
-                  key={field.name}
-                  className="flex items-center gap-2 p-2 text-sm hover:bg-gray-50"
-                >
-                  <input
-                    type="checkbox"
-                    checked={filters[field.name] || false}
-                    onChange={(e) =>
-                      handleFilterChange(field.name, e.target.checked)
-                    }
-                  />
-                  {field.label}
-                </label>
-              ))}
-            </div>
+            <button
+              className="p-2 bg-blue-600 rounded hover:bg-blue-700 text-sm sm:text-base"
+              onClick={() => setShowSettings(!showSettings)}
+            >
+              {showSettings ? "Cerrar ajustes" : "Ajustes"}
+            </button>
           </div>
-
-          {/* Botones de ajustes y vista */}
-          <button
-            onClick={() => setShowSettings(true)}
-            className="ml-auto border px-3 py-1 rounded bg-gray-100 hover:bg-gray-200 text-sm"
-          >
-            ⚙️
-          </button>
-          <button
-            onClick={() =>
-              setViewMode((prev) => (prev === "cards" ? "table" : "cards"))
-            }
-            className="border px-3 py-1 rounded bg-gray-100 hover:bg-gray-200 text-sm"
-          >
-            {viewMode === "cards" ? "🗂️ Tabla" : "📇 Tarjetas"}
-          </button>
         </div>
 
-        {/* Contenido principal */}
-        {viewMode === "cards" ? (
-          <CardView
-            entries={filteredEntries}
-            fields={fields}
-            updateEntry={updateEntry}
-            deleteEntry={deleteEntry}
+        {showSettings ? (
+          <SettingsPanel
+            currentSection={currentSection}
+            selectedFieldIndex={null}
+            setSelectedFieldIndex={() => {}}
+            addField={addField}
+            deleteField={() => {}}
+            moveField={() => {}}
+            updateField={updateField}
           />
         ) : (
-          <TableView
-            entries={filteredEntries}
-            fields={fields}
-            updateEntry={updateEntry}
-            deleteEntry={deleteEntry}
+          <>
+            <div className="mb-4 flex flex-wrap gap-2">
+              {currentSection.fields.map((f) => {
+                if (f.type === "checkbox") {
+                  return (
+                    <select
+                      key={f.name}
+                      value={filter[f.name] || "todos"}
+                      onChange={(e) => setFilter({ ...filter, [f.name]: e.target.value })}
+                      className="p-1 sm:p-2 rounded bg-gray-700 border border-gray-600 text-sm sm:text-base"
+                    >
+                      <option value="todos">Todos</option>
+                      <option value="true">Sí</option>
+                      <option value="false">No</option>
+                    </select>
+                  );
+                } else {
+                  return (
+                    <input
+                      key={f.name}
+                      placeholder={`Filtrar por ${f.name}`}
+                      value={filter[f.name] || ""}
+                      onChange={(e) => setFilter({ ...filter, [f.name]: e.target.value })}
+                      className="p-1 sm:p-2 rounded bg-gray-700 border border-gray-600 text-sm sm:text-base"
+                    />
+                  );
+                }
+              })}
+            </div>
+
+            {viewMode === "table" ? (
+              <TableView
+                entries={filteredEntries}
+                fields={currentSection.fields}
+                updateEntry={updateEntry}
+                deleteEntry={deleteEntry}
+                addEntry={addEntry}
+                editingId={editingId}
+                setEditingId={setEditingId}
+              />
+            ) : (
+              <CardView
+                entries={filteredEntries}
+                fields={currentSection.fields}
+                updateEntry={updateEntry}
+                deleteEntry={deleteEntry}
+              />
+            )}
+          </>
+        )}
+
+        {showSectionEditor && (
+          <SectionEditorModal
+            sections={sections}
+            addSection={addSection}
+            deleteSection={deleteSection}
+            onClose={() => setShowSectionEditor(false)}
           />
         )}
       </main>
-
-      {/* Paneles laterales */}
-      {showSettings && <SettingsPanel onClose={() => setShowSettings(false)} />}
-      {showSectionEditor && (
-        <SectionEditorModal
-          fields={fields}
-          setFields={setFields}
-          onClose={() => setShowSectionEditor(false)}
-        />
-      )}
     </div>
   );
-};
-
-export default App;
+}
