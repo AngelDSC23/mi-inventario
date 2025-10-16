@@ -100,6 +100,39 @@ export default function App() {
     }
   };
 
+    const addField = async (newField: Field) => {
+    setSections((prevSections) => {
+      return prevSections.map((section, index) => {
+        if (index === currentSectionIndex) {
+          // Evitar duplicados por nombre
+          if (section.fields.some((f) => f.name === newField.name)) return section;
+
+          // Añadir el nuevo campo
+          const updatedFields = [...section.fields, newField];
+
+          // Inicializar el campo en todas las entradas existentes
+          const updatedEntries = section.entries.map((entry) => ({
+            ...entry,
+            [newField.name]: newField.type === "checkbox" ? false : "",
+          }));
+
+          const updatedSection = {
+            ...section,
+            fields: updatedFields,
+            entries: updatedEntries,
+          };
+
+          // Guardar el cambio
+          saveSection(updatedSection);
+
+          return updatedSection;
+        }
+        return section;
+      });
+    });
+  };
+
+
   const deleteEntry = async (id: number) => {
     const updatedSections = [...sections];
     updatedSections[currentSectionIndex].entries = updatedSections[currentSectionIndex].entries.filter(
