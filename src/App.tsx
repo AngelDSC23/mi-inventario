@@ -64,7 +64,7 @@ export default function App() {
   };
 
   // Entradas
-  const addField = async (field: Field) => {
+  const add = async (field: Field) => {
     // Evitar nombres vacíos
     if (!field.name.trim()) return;
 
