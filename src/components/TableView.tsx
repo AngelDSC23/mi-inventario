@@ -11,7 +11,7 @@ interface TableViewProps {
   editingId: number | null;
   setEditingId: (id: number | null) => void;
   isNewEntryPresent: boolean;
-  newEntry?: Entry | null; // <-- añadido
+  newEntry?: Entry | null;
 }
 
 const TableView: React.FC<TableViewProps> = ({
@@ -112,6 +112,7 @@ const TableView: React.FC<TableViewProps> = ({
               </td>
             </tr>
           )}
+
           {entries.map((e, entryIndex) => {
             const isEditing = editingId === e.id;
             return (
@@ -162,15 +163,6 @@ const TableView: React.FC<TableViewProps> = ({
           })}
         </tbody>
       </table>
-
-      {!isNewEntryPresent && (
-        <button
-          onClick={addEntry}
-          className="p-2 mt-2 w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-md active:scale-95 transition-transform"
-        >
-          Añadir entrada
-        </button>
-      )}
     </div>
   );
 };
