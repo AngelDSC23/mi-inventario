@@ -132,7 +132,6 @@ export default function App() {
     });
   };
 
-
   const deleteEntry = async (id: number) => {
     const updatedSections = [...sections];
     updatedSections[currentSectionIndex].entries = updatedSections[currentSectionIndex].entries.filter(
