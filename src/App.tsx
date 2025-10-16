@@ -231,7 +231,7 @@ export default function App() {
             currentSection={currentSection}
             selectedFieldIndex={null}
             setSelectedFieldIndex={() => {}}
-            addField={() => {}}
+            addField={addField}
             deleteField={() => {}}
             moveField={() => {}}
             updateField={() => {}}
