@@ -43,7 +43,7 @@ const TableView: React.FC<TableViewProps> = ({
     if (nextRow < 0) nextRow = 0;
     if (nextRow >= rows) nextRow = rows - 1;
 
-    const nextKey = `${nextRow}-${nextCol}`;
+    const nextKey = `${entries[nextRow]?.id}-${fields[nextCol]?.name}`;
     const nextInput = inputRefs.current[nextKey];
     if (nextInput) nextInput.focus();
     else setEditingId(null);
@@ -53,7 +53,7 @@ const TableView: React.FC<TableViewProps> = ({
     if (editingId !== null) {
       const editingIndex = entries.findIndex((e) => e.id === editingId);
       if (editingIndex >= 0) {
-        const firstFieldKey = `${editingIndex}-0`;
+        const firstFieldKey = `${editingId}-${fields[0].name}`;
         const firstInput = inputRefs.current[firstFieldKey];
         if (firstInput && document.activeElement !== firstInput) {
           firstInput.focus();
@@ -62,7 +62,7 @@ const TableView: React.FC<TableViewProps> = ({
         }
       }
     }
-  }, [editingId, entries]);
+  }, [editingId, entries, fields]);
 
   return (
     <>
@@ -78,13 +78,13 @@ const TableView: React.FC<TableViewProps> = ({
             </tr>
           </thead>
           <tbody>
-            {entries.map((e, entryIndex) => {
+            {entries.map((e) => {
               const isEditing = editingId === e.id;
               return (
                 <tr key={e.id} className="hover:bg-gray-800">
                   <td className="p-2 border">{e.id}</td>
-                  {fields.map((f, fieldIndex) => {
-                    const refKey = `${entryIndex}-${fieldIndex}`;
+                  {fields.map((f) => {
+                    const refKey = `${e.id}-${f.name}`;
                     const value = e[f.name];
                     return (
                       <td key={f.name} className="p-2 border">
@@ -103,7 +103,7 @@ const TableView: React.FC<TableViewProps> = ({
                               disabled={!isEditing}
                               value={value || ""}
                               onChange={(ev) => updateEntry(e.id, f.name, ev.target.value)}
-                              onKeyDown={(ev) => handleKeyNavigation(ev, entryIndex, fieldIndex, e.id)}
+                              onKeyDown={(ev) => handleKeyNavigation(ev, entries.findIndex(en => en.id === e.id), fields.findIndex(fi => fi.name === f.name), e.id)}
                               className="w-full p-1 rounded bg-gray-700 border border-gray-600"
                             />
                           )}
