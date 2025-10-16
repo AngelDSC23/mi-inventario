@@ -101,7 +101,7 @@ const TableView: React.FC<TableViewProps> = ({
                       />
                     ) : (
                       <input
-                        ref={(el) => (inputRefs.current[`${entry.id}-${f.name}`] = el)}
+                        ref={(el) => { inputRefs.current[`${entry.id}-${f.name}`] = el; }}
                         disabled={!isEditing}
                         value={entry[f.name] || ""}
                         onChange={(ev) => updateEntry(entry.id, f.name, ev.target.value)}
