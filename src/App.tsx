@@ -42,6 +42,8 @@ export default function App() {
   const [checkboxFilter, setCheckboxFilter] = useState<string>("todos");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // NUEVO: índice de campo seleccionado en SettingsPanel
   const [selectedFieldIndex, setSelectedFieldIndex] = useState<number | null>(null);
 
   const currentSection = sections[currentSectionIndex];
@@ -63,103 +65,17 @@ export default function App() {
     await setDoc(sectionRef, section, { merge: true });
   };
 
-  // Entradas
-  const addEntry = async () => {
-    const nextId =
-      currentSection.entries.length > 0
-        ? currentSection.entries[currentSection.entries.length - 1].id + 1
-        : 1;
-
-    const newEntry: Entry = { id: nextId, digital: false, físico: false };
-
-    currentSection.fields.forEach((f) => {
-      if (!(f.name in newEntry)) newEntry[f.name] = f.type === "checkbox" ? false : "";
-    });
-
-    const updatedSections = [...sections];
-    updatedSections[currentSectionIndex].entries.push(newEntry);
-    setSections(updatedSections);
-    setEditingId(nextId);
-    await saveSection(updatedSections[currentSectionIndex]);
-  };
-
-  const updateEntry = async (id: number, field: string, value: any) => {
-    setSections((prevSections) => {
-      return prevSections.map((section, sIdx) => {
-        if (sIdx === currentSectionIndex) {
-          const updatedEntries = section.entries.map((entry) =>
-            entry.id === id ? { ...entry, [field]: value } : entry
-          );
-          const updatedSection = { ...section, entries: updatedEntries };
-          saveSection(updatedSection);
-          return updatedSection;
-        }
-        return section;
-      });
-    });
-  };
-
-  // Gestión de campos
-  const addField = (newField: Field) => {
-    setSections((prevSections) =>
-      prevSections.map((section, index) => {
-        if (index === currentSectionIndex) {
-          if (section.fields.some((f) => f.name === newField.name)) return section;
-          const updatedFields = [...section.fields, newField];
-          const updatedEntries = section.entries.map((entry) => ({
-            ...entry,
-            [newField.name]: newField.type === "checkbox" ? false : "",
-          }));
-          const updatedSection = { ...section, fields: updatedFields, entries: updatedEntries };
-          saveSection(updatedSection);
-          return updatedSection;
-        }
-        return section;
-      })
-    );
-  };
-
+  // -------------------
+  // Funciones de edición de campos
+  // -------------------
   const updateField = (index: number, updates: Partial<Field>) => {
-    setSections((prevSections) =>
-      prevSections.map((section, sIdx) => {
+    setSections((prev) =>
+      prev.map((section, sIdx) => {
         if (sIdx === currentSectionIndex) {
           const updatedFields = [...section.fields];
           updatedFields[index] = { ...updatedFields[index], ...updates };
-
-          // Renombrar campos en entradas si se cambia el nombre
-          const updatedEntries = section.entries.map((entry) => {
-            if (updates.name && updates.name !== section.fields[index].name) {
-              const { [section.fields[index].name]: old, ...rest } = entry;
-              return { ...rest, [updates.name]: old };
-            }
-            return entry;
-          });
-
-          const updatedSection = { ...section, fields: updatedFields, entries: updatedEntries };
+          const updatedSection = { ...section, fields: updatedFields };
           saveSection(updatedSection);
-          return updatedSection;
-        }
-        return section;
-      })
-    );
-  };
-
-  const moveField = (direction: "left" | "right") => {
-    if (selectedFieldIndex === null) return;
-    setSections((prevSections) =>
-      prevSections.map((section, sIdx) => {
-        if (sIdx === currentSectionIndex) {
-          const newIndex = direction === "left" ? selectedFieldIndex - 1 : selectedFieldIndex + 1;
-          if (newIndex < 0 || newIndex >= section.fields.length) return section;
-
-          const fieldsCopy = [...section.fields];
-          const temp = fieldsCopy[selectedFieldIndex];
-          fieldsCopy[selectedFieldIndex] = fieldsCopy[newIndex];
-          fieldsCopy[newIndex] = temp;
-
-          const updatedSection = { ...section, fields: fieldsCopy };
-          saveSection(updatedSection);
-          setSelectedFieldIndex(newIndex);
           return updatedSection;
         }
         return section;
@@ -169,18 +85,93 @@ export default function App() {
 
   const deleteField = () => {
     if (selectedFieldIndex === null) return;
-    setSections((prevSections) =>
-      prevSections.map((section, sIdx) => {
+    setSections((prev) =>
+      prev.map((section, sIdx) => {
         if (sIdx === currentSectionIndex) {
-          const fieldToDelete = section.fields[selectedFieldIndex];
+          const fieldName = section.fields[selectedFieldIndex].name;
           const updatedFields = section.fields.filter((_, i) => i !== selectedFieldIndex);
           const updatedEntries = section.entries.map((entry) => {
-            const { [fieldToDelete.name]: _, ...rest } = entry;
-            return rest;
+            const copy = { ...entry };
+            delete copy[fieldName];
+            return copy;
           });
           const updatedSection = { ...section, fields: updatedFields, entries: updatedEntries };
           saveSection(updatedSection);
-          setSelectedFieldIndex(null);
+          return updatedSection;
+        }
+        return section;
+      })
+    );
+    setSelectedFieldIndex(null);
+  };
+
+  const moveField = (direction: "left" | "right") => {
+    if (selectedFieldIndex === null) return;
+    setSections((prev) =>
+      prev.map((section, sIdx) => {
+        if (sIdx === currentSectionIndex) {
+          const newIndex = selectedFieldIndex + (direction === "left" ? -1 : 1);
+          if (newIndex < 0 || newIndex >= section.fields.length) return section;
+          const updatedFields = [...section.fields];
+          [updatedFields[selectedFieldIndex], updatedFields[newIndex]] = [
+            updatedFields[newIndex],
+            updatedFields[selectedFieldIndex],
+          ];
+          const updatedSection = { ...section, fields: updatedFields };
+          saveSection(updatedSection);
+          setSelectedFieldIndex(newIndex);
+          return updatedSection;
+        }
+        return section;
+      })
+    );
+  };
+  // -------------------
+
+  const addEntry = async () => {
+    const nextId =
+      currentSection.entries.length > 0
+        ? currentSection.entries[currentSection.entries.length - 1].id + 1
+        : 1;
+    const newEntry: Entry = { id: nextId, digital: false, físico: false };
+    currentSection.fields.forEach((f) => {
+      if (!(f.name in newEntry)) newEntry[f.name] = f.type === "checkbox" ? false : "";
+    });
+    const updatedSections = [...sections];
+    updatedSections[currentSectionIndex].entries.push(newEntry);
+    setSections(updatedSections);
+    setEditingId(nextId);
+    await saveSection(updatedSections[currentSectionIndex]);
+  };
+
+  const updateEntry = async (id: number, field: string, value: any) => {
+    setSections((prev) =>
+      prev.map((section, sIdx) => {
+        if (sIdx === currentSectionIndex) {
+          const updatedEntries = section.entries.map((entry) =>
+            entry.id === id ? { ...entry, [field]: value } : entry
+          );
+          const updatedSection = { ...section, entries: updatedEntries };
+          saveSection(updatedSection);
+          return updatedSection;
+        }
+        return section;
+      })
+    );
+  };
+
+  const addField = async (newField: Field) => {
+    setSections((prev) =>
+      prev.map((section, index) => {
+        if (index === currentSectionIndex) {
+          if (section.fields.some((f) => f.name === newField.name)) return section;
+          const updatedFields = [...section.fields, newField];
+          const updatedEntries = section.entries.map((entry) => ({
+            ...entry,
+            [newField.name]: newField.type === "checkbox" ? false : "",
+          }));
+          const updatedSection = { ...section, fields: updatedFields, entries: updatedEntries };
+          saveSection(updatedSection);
           return updatedSection;
         }
         return section;
@@ -198,7 +189,6 @@ export default function App() {
     await saveSection(updatedSections[currentSectionIndex]);
   };
 
-  // Filtrado
   const filteredEntries = currentSection.entries.filter((entry) => {
     if (checkboxFilter !== "todos" && !entry[checkboxFilter]) return false;
     return currentSection.fields.every((f) => {
