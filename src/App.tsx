@@ -65,30 +65,30 @@ export default function App() {
 
   // Entradas
   const addEntry = async () => {
-  const nextId =
-    currentSection.entries.length > 0
-      ? currentSection.entries[currentSection.entries.length - 1].id + 1
-      : 1;
+    const nextId =
+      currentSection.entries.length > 0
+        ? currentSection.entries[currentSection.entries.length - 1].id + 1
+        : 1;
 
-  // Crear nueva entrada con propiedades obligatorias
-  const newEntry: Entry = { id: nextId, digital: false, físico: false };
+    // Crear nueva entrada con propiedades obligatorias
+    const newEntry: Entry = { id: nextId, digital: false, físico: false };
 
-  // Inicializar campos dinámicos de la sección
-  currentSection.fields.forEach((f) => {
-    if (!(f.name in newEntry)) {
-      newEntry[f.name] = f.type === "checkbox" ? false : "";
-    }
-  });
+    // Inicializar campos dinámicos de la sección
+    currentSection.fields.forEach((f) => {
+      if (!(f.name in newEntry)) {
+        newEntry[f.name] = f.type === "checkbox" ? false : "";
+      }
+    });
 
-  // Actualizar estado y seleccionar nueva entrada para edición
-  const updatedSections = [...sections];
-  updatedSections[currentSectionIndex].entries.push(newEntry);
-  setSections(updatedSections);
-  setEditingId(nextId);
+    // Actualizar estado y seleccionar nueva entrada para edición
+    const updatedSections = [...sections];
+    updatedSections[currentSectionIndex].entries.push(newEntry);
+    setSections(updatedSections);
+    setEditingId(nextId);
 
-  // Guardar en Firestore
-  await saveSection(updatedSections[currentSectionIndex]);
-};
+    // Guardar en Firestore
+    await saveSection(updatedSections[currentSectionIndex]);
+  };
 
 
   const updateEntry = async (id: number, field: string, value: any) => {
