@@ -100,7 +100,7 @@ export default function App() {
     }
   };
 
-    const addField = async (newField: Field) => {
+  const addField = async (newField: Field) => {
     setSections((prevSections) => {
       return prevSections.map((section, index) => {
         if (index === currentSectionIndex) {
