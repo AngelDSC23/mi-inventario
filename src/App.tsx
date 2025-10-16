@@ -90,7 +90,6 @@ export default function App() {
     await saveSection(updatedSections[currentSectionIndex]);
   };
 
-
   const updateEntry = async (id: number, field: string, value: any) => {
     const updatedSections = [...sections];
     const idx = updatedSections[currentSectionIndex].entries.findIndex((e) => e.id === id);
