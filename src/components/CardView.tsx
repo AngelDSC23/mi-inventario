@@ -22,7 +22,7 @@ const CardView: React.FC<CardViewProps> = ({
 }) => {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      {/* ----------------- Fila de entrada rápida ----------------- */}
+      {/* ----------------- Cartón editable ----------------- */}
       {newEntry && setNewEntry && confirmNewEntry && (
         <div className="bg-gray-700 p-4 rounded-lg shadow flex flex-col gap-2">
           {fields.map((f) => {
@@ -51,11 +51,12 @@ const CardView: React.FC<CardViewProps> = ({
             onClick={confirmNewEntry}
             className="p-2 mt-1 bg-green-600 hover:bg-green-700 text-white rounded"
           >
-            Añadir entrada
+            ✅ Confirmar entrada
           </button>
         </div>
       )}
 
+      {/* ----------------- Cartones existentes ----------------- */}
       {entries.map((entry) => (
         <div
           key={entry.id}
