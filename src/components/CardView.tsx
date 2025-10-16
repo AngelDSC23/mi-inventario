@@ -22,7 +22,7 @@ const CardView: React.FC<CardViewProps> = ({
 }) => {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      {/* ----------------- Cartón editable ----------------- */}
+      {/* Tarjeta editable */}
       {newEntry && setNewEntry && confirmNewEntry && (
         <div className="bg-gray-700 p-4 rounded-lg shadow flex flex-col gap-2">
           {fields.map((f) => {
@@ -47,16 +47,24 @@ const CardView: React.FC<CardViewProps> = ({
               />
             );
           })}
-          <button
-            onClick={confirmNewEntry}
-            className="p-2 mt-1 bg-green-600 hover:bg-green-700 text-white rounded"
-          >
-            ✅ Confirmar entrada
-          </button>
+          <div className="flex gap-2 mt-1">
+            <button
+              onClick={confirmNewEntry}
+              className="p-2 bg-green-600 hover:bg-green-700 text-white rounded flex-1"
+            >
+              ✅ Confirmar entrada
+            </button>
+            <button
+              onClick={() => setNewEntry && setNewEntry(null)}
+              className="p-2 bg-red-600 hover:bg-red-700 text-white rounded flex-1"
+            >
+              ❌ Cancelar
+            </button>
+          </div>
         </div>
       )}
 
-      {/* ----------------- Cartones existentes ----------------- */}
+      {/* Tarjetas existentes */}
       {entries.map((entry) => (
         <div
           key={entry.id}
