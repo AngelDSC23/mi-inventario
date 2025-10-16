@@ -42,8 +42,9 @@ export default function App() {
   const [checkboxFilter, setCheckboxFilter] = useState<string>("todos");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
   const [selectedFieldIndex, setSelectedFieldIndex] = useState<number | null>(null);
+
+  // Nuevo estado para manejar fila editable
   const [newEntry, setNewEntry] = useState<Entry | null>(null);
 
   const currentSection = sections[currentSectionIndex];
@@ -65,84 +66,20 @@ export default function App() {
     await setDoc(sectionRef, section, { merge: true });
   };
 
-  // ------------------- Funciones de campos -------------------
-  const updateField = (index: number, updates: Partial<Field>) => {
-    setSections((prev) =>
-      prev.map((section, sIdx) => {
-        if (sIdx === currentSectionIndex) {
-          const updatedFields = [...section.fields];
-          updatedFields[index] = { ...updatedFields[index], ...updates };
-          const updatedSection = { ...section, fields: updatedFields };
-          saveSection(updatedSection);
-          return updatedSection;
-        }
-        return section;
-      })
-    );
-  };
-
-  const deleteField = () => {
-    if (selectedFieldIndex === null) return;
-    setSections((prev) =>
-      prev.map((section, sIdx) => {
-        if (sIdx === currentSectionIndex) {
-          const fieldName = section.fields[selectedFieldIndex].name;
-          const updatedFields = section.fields.filter((_, i) => i !== selectedFieldIndex);
-          const updatedEntries = section.entries.map((entry) => {
-            const copy = { ...entry };
-            delete copy[fieldName];
-            return copy;
-          });
-          const updatedSection = { ...section, fields: updatedFields, entries: updatedEntries };
-          saveSection(updatedSection);
-          return updatedSection;
-        }
-        return section;
-      })
-    );
-    setSelectedFieldIndex(null);
-  };
-
-  const moveField = (direction: "left" | "right") => {
-    if (selectedFieldIndex === null) return;
-    setSections((prev) =>
-      prev.map((section, sIdx) => {
-        if (sIdx === currentSectionIndex) {
-          const newIndex = selectedFieldIndex + (direction === "left" ? -1 : 1);
-          if (newIndex < 0 || newIndex >= section.fields.length) return section;
-          const updatedFields = [...section.fields];
-          [updatedFields[selectedFieldIndex], updatedFields[newIndex]] = [
-            updatedFields[newIndex],
-            updatedFields[selectedFieldIndex],
-          ];
-          const updatedSection = { ...section, fields: updatedFields };
-          saveSection(updatedSection);
-          setSelectedFieldIndex(newIndex);
-          return updatedSection;
-        }
-        return section;
-      })
-    );
-  };
   // -------------------
-
-  // ------------------- Funciones de entradas -------------------
-  const startNewEntry = () => {
+  // Funciones de entrada
+  // -------------------
+  const addEntry = () => {
     const nextId =
       currentSection.entries.length > 0
         ? currentSection.entries[currentSection.entries.length - 1].id + 1
         : 1;
-
-    const entryBase: Entry = {
-      id: nextId,
-      digital: false,
-      físico: false,
-      ...Object.fromEntries(
-        currentSection.fields.map((f) => [f.name, f.type === "checkbox" ? false : ""])
-      ),
-    };
-
-    setNewEntry(entryBase);
+    const entry: Entry = { id: nextId };
+    currentSection.fields.forEach((f) => {
+      entry[f.name] = f.type === "checkbox" ? false : "";
+    });
+    // Se asigna a newEntry para editar antes de confirmar
+    setNewEntry(entry);
     setEditingId(nextId);
   };
 
@@ -151,12 +88,18 @@ export default function App() {
     const updatedSections = [...sections];
     updatedSections[currentSectionIndex].entries.push(newEntry);
     setSections(updatedSections);
-    setEditingId(null);
-    setNewEntry(null);
     await saveSection(updatedSections[currentSectionIndex]);
+    setNewEntry(null);
+    setEditingId(null);
   };
 
   const updateEntry = async (id: number, field: string, value: any) => {
+    // Si es la nueva entrada
+    if (newEntry && newEntry.id === id) {
+      setNewEntry({ ...newEntry, [field]: value });
+      return;
+    }
+
     setSections((prev) =>
       prev.map((section, sIdx) => {
         if (sIdx === currentSectionIndex) {
@@ -170,86 +113,27 @@ export default function App() {
         return section;
       })
     );
-    if (newEntry && newEntry.id === id) {
-      setNewEntry((prev) =>
-        prev
-          ? {
-              ...prev,
-              [field]: value,
-            }
-          : null
-      );
-    }
-  };
-
-  const addField = async (newField: Field) => {
-    setSections((prev) =>
-      prev.map((section, index) => {
-        if (index === currentSectionIndex) {
-          if (section.fields.some((f) => f.name === newField.name)) return section;
-          const updatedFields = [...section.fields, newField];
-          const updatedEntries = section.entries.map((entry) => ({
-            ...entry,
-            [newField.name]: newField.type === "checkbox" ? false : "",
-          }));
-          const updatedSection = { ...section, fields: updatedFields, entries: updatedEntries };
-          saveSection(updatedSection);
-          return updatedSection;
-        }
-        return section;
-      })
-    );
   };
 
   const deleteEntry = async (id: number) => {
+    // Si es la nueva entrada
+    if (newEntry && newEntry.id === id) {
+      setNewEntry(null);
+      return;
+    }
+
     const updatedSections = [...sections];
-    updatedSections[currentSectionIndex].entries = updatedSections[currentSectionIndex].entries.filter(
-      (e) => e.id !== id
-    );
+    updatedSections[currentSectionIndex].entries = updatedSections[
+      currentSectionIndex
+    ].entries.filter((e) => e.id !== id);
     setSections(updatedSections);
     if (editingId === id) setEditingId(null);
-    if (newEntry?.id === id) setNewEntry(null);
     await saveSection(updatedSections[currentSectionIndex]);
   };
+
   // -------------------
-
-  // ------------------- Funciones de secciones -------------------
-  const addSection = (name: string) => {
-    if (!name.trim() || sections.some((s) => s.name === name.trim())) return;
-    const newSection: Section = { name: name.trim(), fields: [], entries: [] };
-    const updated = [...sections, newSection];
-    setSections(updated);
-    setCurrentSectionIndex(updated.length - 1);
-    saveSection(newSection);
-  };
-
-  const deleteSection = (index: number) => {
-    if (index < 0 || index >= sections.length) return;
-    const updated = sections.filter((_, i) => i !== index);
-    setSections(updated);
-    if (currentSectionIndex >= updated.length) setCurrentSectionIndex(updated.length - 1);
-  };
-
-  const renameSection = (index: number, newName: string) => {
-    if (!newName.trim() || sections.some((s, i) => s.name === newName.trim() && i !== index))
-      return;
-    const updated = [...sections];
-    updated[index].name = newName.trim();
-    setSections(updated);
-    saveSection(updated[index]);
-  };
-
-  const moveSection = (index: number, direction: "up" | "down") => {
-    const newIndex = direction === "up" ? index - 1 : index + 1;
-    if (newIndex < 0 || newIndex >= sections.length) return;
-    const updated = [...sections];
-    [updated[index], updated[newIndex]] = [updated[newIndex], updated[index]];
-    setSections(updated);
-    if (currentSectionIndex === index) setCurrentSectionIndex(newIndex);
-    else if (currentSectionIndex === newIndex) setCurrentSectionIndex(index);
-  };
+  // Filtrado
   // -------------------
-
   const filteredEntries = currentSection.entries.filter((entry) => {
     if (checkboxFilter !== "todos" && !entry[checkboxFilter]) return false;
     return currentSection.fields.every((f) => {
@@ -283,7 +167,7 @@ export default function App() {
       </aside>
 
       <main className="flex-1 p-4 sm:p-6 overflow-auto app-container">
-        <div className="flex flex-wrap justify-between items-center mb-4 gap-2 sticky top-0 bg-gray-900 z-20 p-2 rounded">
+        <div className="flex flex-wrap justify-between items-center mb-4 gap-2">
           <button
             className="md:hidden p-2 bg-gray-800 rounded hover:bg-gray-700"
             onClick={() => setSidebarOpen(true)}
@@ -318,12 +202,6 @@ export default function App() {
             >
               {showSettings ? "Cerrar ajustes" : "Ajustes"}
             </button>
-            <button
-              className="p-2 bg-green-600 rounded hover:bg-green-700 text-sm sm:text-base"
-              onClick={startNewEntry}
-            >
-              Añadir entrada
-            </button>
           </div>
         </div>
 
@@ -332,10 +210,10 @@ export default function App() {
             currentSection={currentSection}
             selectedFieldIndex={selectedFieldIndex}
             setSelectedFieldIndex={setSelectedFieldIndex}
-            addField={addField}
-            deleteField={deleteField}
-            moveField={moveField}
-            updateField={updateField}
+            addField={() => {}}
+            deleteField={() => {}}
+            moveField={() => {}}
+            updateField={() => {}}
           />
         ) : (
           <>
@@ -355,17 +233,19 @@ export default function App() {
 
             {viewMode === "table" ? (
               <TableView
-                entries={newEntry ? [newEntry, ...filteredEntries] : filteredEntries}
+                entries={filteredEntries}
                 fields={currentSection.fields}
                 updateEntry={updateEntry}
                 deleteEntry={deleteEntry}
-                addEntry={confirmNewEntry}
+                addEntry={addEntry}
+                confirmNewEntry={confirmNewEntry} // Nuevo
                 editingId={editingId}
                 setEditingId={setEditingId}
+                newEntry={newEntry} // Nuevo
               />
             ) : (
               <CardView
-                entries={newEntry ? [newEntry, ...filteredEntries] : filteredEntries}
+                entries={filteredEntries}
                 fields={currentSection.fields}
                 updateEntry={updateEntry}
                 deleteEntry={deleteEntry}
@@ -377,10 +257,10 @@ export default function App() {
         {showSectionEditor && (
           <SectionEditorModal
             sections={sections}
-            addSection={addSection}
-            deleteSection={deleteSection}
-            renameSection={renameSection}
-            moveSection={moveSection}
+            addSection={() => {}}
+            deleteSection={() => {}}
+            renameSection={() => {}}
+            moveSection={() => {}}
             onClose={() => setShowSectionEditor(false)}
           />
         )}
