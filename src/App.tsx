@@ -65,42 +65,42 @@ export default function App() {
 
   // Entradas
   const addField = async (field: Field) => {
-  // Evitar nombres vacíos
-  if (!field.name.trim()) return;
+    // Evitar nombres vacíos
+    if (!field.name.trim()) return;
 
-  // Clonar el estado actual de secciones
-  const updatedSections = [...sections];
-  const section = { ...updatedSections[currentSectionIndex] };
+    // Clonar el estado actual de secciones
+    const updatedSections = [...sections];
+    const section = { ...updatedSections[currentSectionIndex] };
 
-  // Clonar arrays para no mutar directamente
-  section.fields = [...section.fields];
-  section.entries = [...section.entries];
+    // Clonar arrays para no mutar directamente
+    section.fields = [...section.fields];
+    section.entries = [...section.entries];
 
-  // Si el campo no existe aún, añadirlo
-  if (!section.fields.some((f) => f.name === field.name)) {
-    // Asegurar que tiene tipo asignado
-    const safeField: Field = {
-      name: field.name.trim(),
-      type: field.type === "checkbox" ? "checkbox" : "text",
-    };
+    // Si el campo no existe aún, añadirlo
+    if (!section.fields.some((f) => f.name === field.name)) {
+      // Asegurar que tiene tipo asignado
+      const safeField: Field = {
+        name: field.name.trim(),
+        type: field.type === "checkbox" ? "checkbox" : "text",
+      };
 
-    // Añadir el nuevo campo a la lista de campos
-    section.fields.push(safeField);
+      // Añadir el nuevo campo a la lista de campos
+      section.fields.push(safeField);
 
-    // Inicializar la nueva propiedad en cada entrada existente
-    section.entries = section.entries.map((entry) => ({
-      ...entry,
-      [safeField.name]: safeField.type === "checkbox" ? false : "",
-    }));
+      // Inicializar la nueva propiedad en cada entrada existente
+      section.entries = section.entries.map((entry) => ({
+        ...entry,
+        [safeField.name]: safeField.type === "checkbox" ? false : "",
+      }));
 
-    // Actualizar el array principal de secciones
-    updatedSections[currentSectionIndex] = section;
-    setSections(updatedSections);
+      // Actualizar el array principal de secciones
+      updatedSections[currentSectionIndex] = section;
+      setSections(updatedSections);
 
-    // Guardar la sección actualizada en Firestore o en almacenamiento local
-    await saveSection(section);
-  }
-};
+      // Guardar la sección actualizada en Firestore o en almacenamiento local
+      await saveSection(section);
+    }
+  };
 
 
   const updateEntry = async (id: number, field: string, value: any) => {
