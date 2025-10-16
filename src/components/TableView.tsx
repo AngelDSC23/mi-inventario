@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useRef, useEffect } from "react";
 import { Entry, Field } from "../types";
 
 interface TableViewProps {
@@ -21,110 +21,124 @@ const TableView: React.FC<TableViewProps> = ({
   setEditingId,
 }) => {
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
-  const checkboxFields = fields.filter((f) => f.type === "checkbox");
-  const [checkboxFilter, setCheckboxFilter] = useState<{ [key: string]: "all" | "true" | "false" }>({});
+
+  const handleKeyNavigation = (
+    e: React.KeyboardEvent<HTMLInputElement>,
+    entryIndex: number,
+    fieldIndex: number,
+    entryId: number
+  ) => {
+    const rows = entries.length;
+    const cols = fields.length;
+    let nextRow = entryIndex;
+    let nextCol = fieldIndex;
+
+    if (e.key === "Enter" || e.key === "ArrowRight") nextCol++;
+    if (e.key === "ArrowLeft") nextCol--;
+    if (e.key === "ArrowDown") nextRow++;
+    if (e.key === "ArrowUp") nextRow--;
+
+    if (nextCol >= cols) { nextCol = 0; nextRow++; }
+    if (nextCol < 0) { nextCol = cols - 1; nextRow--; }
+    if (nextRow < 0) nextRow = 0;
+    if (nextRow >= rows) nextRow = rows - 1;
+
+    const nextKey = `${nextRow}-${nextCol}`;
+    const nextInput = inputRefs.current[nextKey];
+    if (nextInput) nextInput.focus();
+    else setEditingId(null);
+  };
 
   useEffect(() => {
-    const initialFilters: { [key: string]: "all" | "true" | "false" } = {};
-    checkboxFields.forEach((f) => { initialFilters[f.name] = "all"; });
-    setCheckboxFilter(initialFilters);
-  }, [fields]);
-
-  const filteredEntries = entries.filter((e) => {
-    return checkboxFields.every((f) => {
-      const val = checkboxFilter[f.name];
-      if (val === "all") return true;
-      if (val === "true") return !!e[f.name];
-      return !e[f.name];
-    });
-  });
+    if (editingId !== null) {
+      const editingIndex = entries.findIndex((e) => e.id === editingId);
+      if (editingIndex >= 0) {
+        const firstFieldKey = `${editingIndex}-0`;
+        const firstInput = inputRefs.current[firstFieldKey];
+        if (firstInput && document.activeElement !== firstInput) {
+          firstInput.focus();
+          const val = firstInput.value;
+          firstInput.setSelectionRange(val.length, val.length);
+        }
+      }
+    }
+  }, [editingId, entries]);
 
   return (
-    <div className="overflow-auto">
-      <table className="table-auto w-full border-collapse border border-gray-600">
-        <thead>
-          <tr>
-            <th className="border border-gray-600 p-2">ID</th>
-            {fields.map((f) => (
-              <th key={f.name} className="border border-gray-600 p-2 capitalize">{f.name}</th>
-            ))}
-            <th className="border border-gray-600 p-2">Acciones</th>
-          </tr>
-          <tr>
-            <th />
-            {fields.map((f) => {
-              if (f.type === "checkbox") {
-                return (
-                  <th key={f.name} className="border border-gray-600 p-1">
-                    <select
-                      value={checkboxFilter[f.name] || "all"}
-                      onChange={(e) => setCheckboxFilter({ ...checkboxFilter, [f.name]: e.target.value as "all" | "true" | "false" })}
-                      className="w-full bg-gray-700 border border-gray-600 text-white rounded p-1"
+    <>
+      <div className="table-container overflow-x-auto rounded-lg border border-gray-700">
+        <table className="min-w-full border border-gray-700 mb-4">
+          <thead className="bg-gray-800">
+            <tr>
+              <th className="p-2 border">ID</th>
+              {fields.map((f) => (
+                <th key={f.name} className="p-2 border capitalize">{f.name}</th>
+              ))}
+              <th className="p-2 border">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {entries.map((e, entryIndex) => {
+              const isEditing = editingId === e.id;
+              return (
+                <tr key={e.id} className="hover:bg-gray-800">
+                  <td className="p-2 border">{e.id}</td>
+                  {fields.map((f, fieldIndex) => {
+                    const refKey = `${entryIndex}-${fieldIndex}`;
+                    const value = e[f.name];
+                    return (
+                      <td key={f.name} className="p-2 border">
+                        <div className="flex justify-center items-center h-full">
+                          {f.type === "checkbox" ? (
+                            <input
+                              type="checkbox"
+                              checked={!!value}
+                              disabled={!isEditing}
+                              onChange={(ev) => updateEntry(e.id, f.name, ev.target.checked)}
+                              className="w-5 h-5 accent-blue-500 cursor-pointer"
+                            />
+                          ) : (
+                            <input
+                              ref={el => { inputRefs.current[refKey] = el || null; }}
+                              disabled={!isEditing}
+                              value={value || ""}
+                              onChange={(ev) => updateEntry(e.id, f.name, ev.target.value)}
+                              onKeyDown={(ev) => handleKeyNavigation(ev, entryIndex, fieldIndex, e.id)}
+                              className="w-full p-1 rounded bg-gray-700 border border-gray-600"
+                            />
+                          )}
+                        </div>
+                      </td>
+                    );
+                  })}
+                  <td className="p-2 border flex gap-2 justify-center">
+                    <button
+                      onClick={() => setEditingId(isEditing ? null : e.id)}
+                      className="flex items-center justify-center min-w-[36px] min-h-[36px] bg-yellow-500 text-white rounded-md hover:bg-yellow-600 active:scale-95 transition-transform"
                     >
-                      <option value="all">Todos</option>
-                      <option value="true">Sí</option>
-                      <option value="false">No</option>
-                    </select>
-                  </th>
-                );
-              } else {
-                return (
-                  <th key={f.name} className="border border-gray-600 p-1">
-                    <input
-                      placeholder={`Filtrar ${f.name}`}
-                      value={""}
-                      onChange={() => {}}
-                      className="w-full p-1 rounded bg-gray-700 border border-gray-600"
-                    />
-                  </th>
-                );
-              }
-            })}
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          {filteredEntries.map((entry) => {
-            const isEditing = editingId === entry.id;
-            return (
-              <tr key={entry.id} className="hover:bg-gray-800 transition-colors">
-                <td className="border border-gray-600 p-1">{entry.id}</td>
-                {fields.map((f) => (
-                  <td key={f.name} className="border border-gray-600 p-1">
-                    {f.type === "checkbox" ? (
-                      <input
-                        type="checkbox"
-                        checked={!!entry[f.name]}
-                        disabled={!isEditing}
-                        onChange={(ev) => updateEntry(entry.id, f.name, ev.target.checked)}
-                        className="w-5 h-5 accent-blue-500"
-                      />
-                    ) : (
-                      <input
-                        ref={(el) => { inputRefs.current[`${entry.id}-${f.name}`] = el; }}
-                        disabled={!isEditing}
-                        value={entry[f.name] || ""}
-                        onChange={(ev) => updateEntry(entry.id, f.name, ev.target.value)}
-                        className="w-full p-1 rounded bg-gray-700 border border-gray-600"
-                      />
-                    )}
+                      🖉
+                    </button>
+                    <button
+                      onClick={() => deleteEntry(e.id)}
+                      className="flex items-center justify-center min-w-[36px] min-h-[36px] bg-red-600 text-white rounded-md hover:bg-red-700 active:scale-95 transition-transform"
+                    >
+                      🗑
+                    </button>
                   </td>
-                ))}
-                <td className="border border-gray-600 p-1 flex gap-2 justify-center">
-                  <button onClick={() => setEditingId(isEditing ? null : entry.id)} className="px-2 py-1 bg-yellow-500 rounded hover:bg-yellow-600">🖉</button>
-                  <button onClick={() => deleteEntry(entry.id)} className="px-2 py-1 bg-red-600 rounded hover:bg-red-700">🗑</button>
-                </td>
-              </tr>
-            );
-          })}
-          <tr>
-            <td colSpan={fields.length + 2} className="p-2 text-center">
-              <button onClick={addEntry} className="px-3 py-1 bg-green-600 rounded hover:bg-green-700">Añadir entrada</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <button
+        onClick={addEntry}
+        className="p-2 mt-2 w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-md active:scale-95 transition-transform"
+      >
+        Añadir entrada
+      </button>
+    </>
   );
 };
 
