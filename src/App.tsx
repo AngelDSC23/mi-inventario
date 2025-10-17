@@ -83,19 +83,19 @@ export default function App() {
 
   // Se añade el nuevo campo cover inicializado vacío
   const entry: Entry = {
-    id: nextId,
-    digital: false,
-    físico: false,
-    cover: "",
-  } as Entry;
+      id: nextId,
+      digital: false,
+      físico: false,
+      cover: "",
+    } as Entry;
 
-  currentSection.fields.forEach((f) => {
-    if (!(f.name in entry)) entry[f.name] = f.type === "checkbox" ? false : "";
-  });
+    currentSection.fields.forEach((f) => {
+      if (!(f.name in entry)) entry[f.name] = f.type === "checkbox" ? false : "";
+    });
 
-  setNewEntry(entry);
-  setEditingId(nextId);
-};
+    setNewEntry(entry);
+    setEditingId(nextId);
+  };
 
   const confirmNewEntry = async () => {
     if (!newEntry) return;
