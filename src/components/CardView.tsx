@@ -51,7 +51,6 @@ const CardView: React.FC<CardViewProps> = ({
     });
   };
 
-
   const handleCoverChange = (entry: Entry, fileOrUrl: File | string) => {
     if (typeof fileOrUrl === "string") {
       updateEntry(entry.id, "cover", fileOrUrl);
