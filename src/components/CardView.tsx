@@ -20,9 +20,16 @@ const CardView: React.FC<CardViewProps> = ({
   confirmNewEntry,
 }) => {
   const [expandedIds, setExpandedIds] = useState<number[]>([]);
+  const [editingIds, setEditingIds] = useState<number[]>([]);
 
   const toggleExpand = (id: number) => {
     setExpandedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  const toggleEdit = (id: number) => {
+    setEditingIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
   };
@@ -36,27 +43,17 @@ const CardView: React.FC<CardViewProps> = ({
     }
   };
 
-  const renderCompactInfo = (entry: Entry) => {
-    const titleField = fields.find((f) => f.name.toLowerCase() === "titulo");
-    const authorField = fields.find((f) => f.name.toLowerCase() === "autor" || f.name.toLowerCase() === "artista");
-
-    return (
-      <div className="flex flex-col flex-1 overflow-hidden">
-        <span className="font-bold text-lg truncate">#{entry.id}</span>
-        {titleField && (
-          <span className="text-base truncate">{entry[titleField.name]}</span>
-        )}
-        {authorField && (
-          <span className="text-sm text-gray-400 truncate">
-            {entry[authorField.name]}
-          </span>
-        )}
-      </div>
-    );
-  };
-
   const renderCard = (entry: Entry, isNew: boolean = false) => {
     const isExpanded = expandedIds.includes(entry.id);
+    const isEditing = editingIds.includes(entry.id);
+
+    const titleField = fields.find(
+      (f) => f.name.toLowerCase() === "titulo"
+    );
+    const authorField = fields.find(
+      (f) =>
+        f.name.toLowerCase() === "autor" || f.name.toLowerCase() === "artista"
+    );
 
     return (
       <div
@@ -76,7 +73,7 @@ const CardView: React.FC<CardViewProps> = ({
           )}
         </div>
 
-        {/* Editor de portada (solo en modo tarjetas) */}
+        {/* Editor de portada */}
         <div className="flex gap-2 text-sm text-gray-300">
           <input
             type="text"
@@ -97,37 +94,71 @@ const CardView: React.FC<CardViewProps> = ({
           />
         </div>
 
-        {/* Info compacta */}
-        <div className="flex justify-between items-start gap-2">
-          {renderCompactInfo(entry)}
-          <div className="flex flex-col gap-1 items-end">
-            {!isNew && (
-              <>
-                <button
-                  onClick={() => toggleExpand(entry.id)}
-                  className="text-blue-400 hover:text-blue-500 text-sm"
-                >
-                  {isExpanded ? "Ocultar" : "Detalles"}
-                </button>
-                <button
-                  onClick={() => deleteEntry(entry.id)}
-                  className="text-red-400 hover:text-red-500 text-sm"
-                >
-                  🗑 Eliminar
-                </button>
-              </>
-            )}
-          </div>
+        {/* Cabecera con título/autor */}
+        <div className="flex flex-col flex-1 overflow-hidden">
+          <span className="font-bold text-lg truncate">#{entry.id}</span>
+
+          {titleField && (
+            <input
+              type="text"
+              disabled={!isEditing && !isNew}
+              value={entry[titleField.name] || ""}
+              onChange={(e) =>
+                updateEntry(entry.id, titleField.name, e.target.value)
+              }
+              className={`w-full p-1 rounded bg-gray-700 border border-gray-600 ${
+                !isEditing && !isNew ? "opacity-70 cursor-default" : ""
+              }`}
+            />
+          )}
+
+          {authorField && (
+            <input
+              type="text"
+              disabled={!isEditing && !isNew}
+              value={entry[authorField.name] || ""}
+              onChange={(e) =>
+                updateEntry(entry.id, authorField.name, e.target.value)
+              }
+              className={`w-full p-1 rounded bg-gray-700 border border-gray-600 ${
+                !isEditing && !isNew ? "opacity-70 cursor-default" : ""
+              }`}
+            />
+          )}
         </div>
 
-        {/* Sección expandida: muestra todos los campos */}
+        {/* Botones principales */}
+        {!isNew && (
+          <div className="flex justify-end gap-2 mt-2">
+            <button
+              onClick={() => toggleExpand(entry.id)}
+              className="bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 active:scale-95 transition-transform"
+              title="Detalles"
+            >
+              🔍
+            </button>
+            <button
+              onClick={() => toggleEdit(entry.id)}
+              className="bg-yellow-500 text-white px-2 py-1 rounded hover:bg-yellow-600 active:scale-95 transition-transform"
+              title="Editar"
+            >
+              ✏️
+            </button>
+            <button
+              onClick={() => deleteEntry(entry.id)}
+              className="bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700 active:scale-95 transition-transform"
+              title="Eliminar"
+            >
+              🗑
+            </button>
+          </div>
+        )}
+
+        {/* Sección expandida */}
         {isExpanded && (
           <div className="mt-3 border-t border-gray-700 pt-3">
             {fields.map((f) => {
-              // no mostrar de nuevo título o autor si ya están en el encabezado
-              if (
-                ["titulo", "autor", "artista"].includes(f.name.toLowerCase())
-              )
+              if (["titulo", "autor", "artista"].includes(f.name.toLowerCase()))
                 return null;
 
               return (
@@ -143,6 +174,7 @@ const CardView: React.FC<CardViewProps> = ({
                         updateEntry(entry.id, f.name, e.target.checked)
                       }
                       className="w-5 h-5 accent-blue-500"
+                      disabled={!isEditing && !isNew}
                     />
                   ) : (
                     <input
@@ -151,7 +183,10 @@ const CardView: React.FC<CardViewProps> = ({
                       onChange={(e) =>
                         updateEntry(entry.id, f.name, e.target.value)
                       }
-                      className="w-full p-1 rounded bg-gray-700 border border-gray-600"
+                      disabled={!isEditing && !isNew}
+                      className={`w-full p-1 rounded bg-gray-700 border border-gray-600 ${
+                        !isEditing && !isNew ? "opacity-70 cursor-default" : ""
+                      }`}
                     />
                   )}
                 </div>
