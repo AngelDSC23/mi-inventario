@@ -43,23 +43,34 @@ export default function App() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedFieldIndex, setSelectedFieldIndex] = useState<number | null>(null);
-
   const [newEntry, setNewEntry] = useState<Entry | null>(null);
 
   const currentSection = sections[currentSectionIndex];
 
+  // -------------------------------
+  // Cargar secciones y limpiar Base64
+  // -------------------------------
   useEffect(() => {
     async function fetchSections() {
       const querySnapshot = await getDocs(collection(db, "sections"));
       if (!querySnapshot.empty) {
-        const loadedSections = querySnapshot.docs.map((doc) => doc.data());
-        setSections(loadedSections as Section[]);
+        const loadedSections = querySnapshot.docs.map((docSnap) => docSnap.data() as Section);
+        const cleanedSections = loadedSections.map((section) => ({
+          ...section,
+          entries: section.entries?.map((entry) => ({
+            ...entry,
+            cover: entry.cover?.startsWith("data:image") ? "" : entry.cover || "",
+          })) || [],
+        }));
+        setSections(cleanedSections);
+        // Guardar la limpieza en Firestore
+        cleanedSections.forEach((section) => saveSection(section));
       }
     }
     fetchSections();
   }, []);
 
-  // limpiar entrada nueva al cambiar vista o sección
+  // Limpiar entrada nueva al cambiar sección o vista
   useEffect(() => {
     setNewEntry(null);
     setEditingId(null);
@@ -71,18 +82,18 @@ export default function App() {
     await setDoc(sectionRef, section, { merge: true });
   };
 
-  // -------------------
-  // Funciones de entrada
-  // -------------------
+  // -------------------------------
+  // Funciones de gestión de entradas
+  // -------------------------------
   const addEntry = () => {
-  if (newEntry) return; // ya hay una fila nueva editable
-  const nextId =
-    currentSection.entries.length > 0
-      ? currentSection.entries[currentSection.entries.length - 1].id + 1
-      : 1;
+    if (newEntry) return;
 
-  // Se añade el nuevo campo cover inicializado vacío
-  const entry: Entry = {
+    const nextId =
+      currentSection.entries.length > 0
+        ? currentSection.entries[currentSection.entries.length - 1].id + 1
+        : 1;
+
+    const entry: Entry = {
       id: nextId,
       digital: false,
       físico: false,
@@ -149,9 +160,9 @@ export default function App() {
     await saveSection(updatedSections[currentSectionIndex]);
   };
 
-  // -------------------
+  // -------------------------------
   // Filtrado
-  // -------------------
+  // -------------------------------
   const filteredEntries = currentSection.entries.filter((entry) => {
     if (checkboxFilter !== "todos" && !entry[checkboxFilter]) return false;
     return currentSection.fields.every((f) => {
@@ -165,28 +176,22 @@ export default function App() {
 
   const checkboxFields = currentSection.fields.filter((f) => f.type === "checkbox");
 
-  // -------------------
-  // FUNCIONES PARA SETTINGS PANEL & SECTION EDITOR
-  // (implementaciones inmutables y que llaman a saveSection)
-  // -------------------
-
-  // SectionEditorModal: addSection(name: string)
+  // -------------------------------
+  // Funciones de SettingsPanel & SectionEditorModal
+  // -------------------------------
   const addSection = (name: string) => {
     if (!name || !name.trim()) return;
     const newSection: Section = { name: name.trim(), fields: [], entries: [] };
     setSections((prev) => {
       const updated = [...prev, newSection];
-      // Guardar la nueva sección en Firestore también
       saveSection(newSection);
       return updated;
     });
   };
 
-  // SectionEditorModal: deleteSection(index: number)
   const deleteSection = (index: number) => {
     setSections((prev) => {
       const updated = prev.filter((_, i) => i !== index);
-      // Ajustar índice de sección activa si hace falta
       if (currentSectionIndex >= updated.length) {
         setCurrentSectionIndex(Math.max(0, updated.length - 1));
       }
@@ -194,7 +199,6 @@ export default function App() {
     });
   };
 
-  // SectionEditorModal: renameSection(index: number, newName: string)
   const renameSection = (index: number, newName: string) => {
     setSections((prev) => {
       const updated = [...prev];
@@ -205,7 +209,6 @@ export default function App() {
     });
   };
 
-  // SectionEditorModal: moveSection(index: number, direction: "up" | "down")
   const moveSection = (index: number, direction: "up" | "down") => {
     setSections((prev) => {
       const updated = [...prev];
@@ -215,7 +218,7 @@ export default function App() {
       [copy[index], copy[target]] = [copy[target], copy[index]];
       return copy;
     });
-    // Si movemos la sección actual, ajustar currentSectionIndex si es necesario
+
     setCurrentSectionIndex((cur) => {
       if (cur === index) return direction === "up" ? Math.max(0, cur - 1) : Math.min(sections.length - 1, cur + 1);
       if (cur === (direction === "up" ? index - 1 : index + 1)) return direction === "up" ? cur + 1 : cur - 1;
@@ -223,7 +226,6 @@ export default function App() {
     });
   };
 
-  // SettingsPanel: addField(field: Field)
   const addField = (field: Field) => {
     setSections((prev) => {
       const updated = [...prev];
@@ -235,7 +237,6 @@ export default function App() {
     });
   };
 
-  // SettingsPanel: deleteField() -> borra selectedFieldIndex en currentSection
   const deleteField = () => {
     if (selectedFieldIndex === null) return;
     setSections((prev) => {
@@ -249,7 +250,6 @@ export default function App() {
     setSelectedFieldIndex(null);
   };
 
-  // SettingsPanel: moveField(direction: "left" | "right")
   const moveField = (direction: "left" | "right") => {
     if (selectedFieldIndex === null) return;
     setSections((prev) => {
@@ -264,11 +264,9 @@ export default function App() {
       saveSection(section);
       return updated;
     });
-    // actualizar la selección al nuevo índice
     setSelectedFieldIndex((prev) => (prev === null ? null : direction === "left" ? Math.max(0, prev - 1) : Math.min((currentSection.fields.length - 1), prev + 1)));
   };
 
-  // SettingsPanel: updateField(index: number, updates: Partial<Field>)
   const updateField = (index: number, updates: Partial<Field>) => {
     setSections((prev) => {
       const updated = [...prev];
@@ -282,6 +280,9 @@ export default function App() {
     });
   };
 
+  // -------------------------------
+  // Render
+  // -------------------------------
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-gray-900 text-gray-100 overflow-hidden">
       <aside className="w-full md:w-64 flex-shrink-0">
@@ -326,7 +327,6 @@ export default function App() {
               </select>
             )}
 
-            {/* Botón centralizado de añadir entrada */}
             <button
               onClick={addEntry}
               disabled={!!newEntry}
