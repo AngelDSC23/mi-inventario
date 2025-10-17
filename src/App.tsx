@@ -81,7 +81,7 @@ export default function App() {
         ? currentSection.entries[currentSection.entries.length - 1].id + 1
         : 1;
 
-    const entry: Entry = { id: nextId, digital: false, físico: false };
+    const entry: Entry = { id: nextId, digital: false, físico: false } as Entry;
     currentSection.fields.forEach((f) => {
       if (!(f.name in entry)) entry[f.name] = f.type === "checkbox" ? false : "";
     });
@@ -158,6 +158,123 @@ export default function App() {
 
   const checkboxFields = currentSection.fields.filter((f) => f.type === "checkbox");
 
+  // -------------------
+  // FUNCIONES PARA SETTINGS PANEL & SECTION EDITOR
+  // (implementaciones inmutables y que llaman a saveSection)
+  // -------------------
+
+  // SectionEditorModal: addSection(name: string)
+  const addSection = (name: string) => {
+    if (!name || !name.trim()) return;
+    const newSection: Section = { name: name.trim(), fields: [], entries: [] };
+    setSections((prev) => {
+      const updated = [...prev, newSection];
+      // Guardar la nueva sección en Firestore también
+      saveSection(newSection);
+      return updated;
+    });
+  };
+
+  // SectionEditorModal: deleteSection(index: number)
+  const deleteSection = (index: number) => {
+    setSections((prev) => {
+      const updated = prev.filter((_, i) => i !== index);
+      // Ajustar índice de sección activa si hace falta
+      if (currentSectionIndex >= updated.length) {
+        setCurrentSectionIndex(Math.max(0, updated.length - 1));
+      }
+      return updated;
+    });
+  };
+
+  // SectionEditorModal: renameSection(index: number, newName: string)
+  const renameSection = (index: number, newName: string) => {
+    setSections((prev) => {
+      const updated = [...prev];
+      const section = { ...updated[index], name: newName };
+      updated[index] = section;
+      saveSection(section);
+      return updated;
+    });
+  };
+
+  // SectionEditorModal: moveSection(index: number, direction: "up" | "down")
+  const moveSection = (index: number, direction: "up" | "down") => {
+    setSections((prev) => {
+      const updated = [...prev];
+      const target = direction === "up" ? index - 1 : index + 1;
+      if (target < 0 || target >= updated.length) return prev;
+      const copy = [...updated];
+      [copy[index], copy[target]] = [copy[target], copy[index]];
+      return copy;
+    });
+    // Si movemos la sección actual, ajustar currentSectionIndex si es necesario
+    setCurrentSectionIndex((cur) => {
+      if (cur === index) return direction === "up" ? Math.max(0, cur - 1) : Math.min(sections.length - 1, cur + 1);
+      if (cur === (direction === "up" ? index - 1 : index + 1)) return direction === "up" ? cur + 1 : cur - 1;
+      return cur;
+    });
+  };
+
+  // SettingsPanel: addField(field: Field)
+  const addField = (field: Field) => {
+    setSections((prev) => {
+      const updated = [...prev];
+      const section = { ...updated[currentSectionIndex] };
+      section.fields = [...section.fields, field];
+      updated[currentSectionIndex] = section;
+      saveSection(section);
+      return updated;
+    });
+  };
+
+  // SettingsPanel: deleteField() -> borra selectedFieldIndex en currentSection
+  const deleteField = () => {
+    if (selectedFieldIndex === null) return;
+    setSections((prev) => {
+      const updated = [...prev];
+      const section = { ...updated[currentSectionIndex] };
+      section.fields = section.fields.filter((_, i) => i !== selectedFieldIndex);
+      updated[currentSectionIndex] = section;
+      saveSection(section);
+      return updated;
+    });
+    setSelectedFieldIndex(null);
+  };
+
+  // SettingsPanel: moveField(direction: "left" | "right")
+  const moveField = (direction: "left" | "right") => {
+    if (selectedFieldIndex === null) return;
+    setSections((prev) => {
+      const updated = [...prev];
+      const section = { ...updated[currentSectionIndex] };
+      const fields = [...section.fields];
+      const target = direction === "left" ? selectedFieldIndex - 1 : selectedFieldIndex + 1;
+      if (target < 0 || target >= fields.length) return prev;
+      [fields[selectedFieldIndex], fields[target]] = [fields[target], fields[selectedFieldIndex]];
+      section.fields = fields;
+      updated[currentSectionIndex] = section;
+      saveSection(section);
+      return updated;
+    });
+    // actualizar la selección al nuevo índice
+    setSelectedFieldIndex((prev) => (prev === null ? null : direction === "left" ? Math.max(0, prev - 1) : Math.min((currentSection.fields.length - 1), prev + 1)));
+  };
+
+  // SettingsPanel: updateField(index: number, updates: Partial<Field>)
+  const updateField = (index: number, updates: Partial<Field>) => {
+    setSections((prev) => {
+      const updated = [...prev];
+      const section = { ...updated[currentSectionIndex] };
+      const fields = [...section.fields];
+      fields[index] = { ...fields[index], ...updates };
+      section.fields = fields;
+      updated[currentSectionIndex] = section;
+      saveSection(section);
+      return updated;
+    });
+  };
+
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-gray-900 text-gray-100 overflow-hidden">
       <aside className="w-full md:w-64 flex-shrink-0">
@@ -231,10 +348,10 @@ export default function App() {
             currentSection={currentSection}
             selectedFieldIndex={selectedFieldIndex}
             setSelectedFieldIndex={setSelectedFieldIndex}
-            addField={() => {}}
-            deleteField={() => {}}
-            moveField={() => {}}
-            updateField={() => {}}
+            addField={addField}
+            deleteField={deleteField}
+            moveField={moveField}
+            updateField={updateField}
           />
         ) : (
           <>
@@ -282,10 +399,10 @@ export default function App() {
         {showSectionEditor && (
           <SectionEditorModal
             sections={sections}
-            addSection={() => {}}
-            deleteSection={() => {}}
-            renameSection={() => {}}
-            moveSection={() => {}}
+            addSection={addSection}
+            deleteSection={deleteSection}
+            renameSection={renameSection}
+            moveSection={moveSection}
             onClose={() => setShowSectionEditor(false)}
           />
         )}
