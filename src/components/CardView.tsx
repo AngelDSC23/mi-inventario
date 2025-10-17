@@ -23,33 +23,33 @@ const CardView: React.FC<CardViewProps> = ({
   const [editingIds, setEditingIds] = useState<number[]>([]);
 
   const toggleExpand = (id: number) => {
-  setExpandedIds((prev) => {
-    const isCurrentlyExpanded = prev.includes(id);
-    if (isCurrentlyExpanded) {
-      // Si estaba en edición y cerramos detalles, desactivar edición
-      setEditingIds((editPrev) => editPrev.filter((eid) => eid !== id));
-      return prev.filter((x) => x !== id);
-    } else {
-      return [...prev, id];
-    }
-  });
-};
+    setExpandedIds((prev) => {
+      const isCurrentlyExpanded = prev.includes(id);
+      if (isCurrentlyExpanded) {
+        // Si estaba en edición y cerramos detalles, desactivar edición
+        setEditingIds((editPrev) => editPrev.filter((eid) => eid !== id));
+        return prev.filter((x) => x !== id);
+      } else {
+        return [...prev, id];
+      }
+    });
+  };
 
-const toggleEdit = (id: number) => {
-  setEditingIds((prev) => {
-    const isCurrentlyEditing = prev.includes(id);
-    if (isCurrentlyEditing) {
-      // Desactivar edición manualmente, no toca detalles
-      return prev.filter((eid) => eid !== id);
-    } else {
-      // Activamos edición → también abrimos detalles si no está abierto
-      setExpandedIds((expandedPrev) =>
-        expandedPrev.includes(id) ? expandedPrev : [...expandedPrev, id]
-      );
-      return [...prev, id];
-    }
-  });
-};
+  const toggleEdit = (id: number) => {
+    setEditingIds((prev) => {
+      const isCurrentlyEditing = prev.includes(id);
+      if (isCurrentlyEditing) {
+        // Desactivar edición manualmente, no toca detalles
+        return prev.filter((eid) => eid !== id);
+      } else {
+        // Activamos edición → también abrimos detalles si no está abierto
+        setExpandedIds((expandedPrev) =>
+          expandedPrev.includes(id) ? expandedPrev : [...expandedPrev, id]
+        );
+        return [...prev, id];
+      }
+    });
+  };
 
   const handleCoverChange = (entry: Entry, fileOrUrl: File | string) => {
     if (typeof fileOrUrl === "string") {
