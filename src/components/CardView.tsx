@@ -21,12 +21,12 @@ const CardView: React.FC<CardViewProps> = ({
 }) => {
   const [expandedIds, setExpandedIds] = useState<number[]>([]);
   const [editingIds, setEditingIds] = useState<number[]>([]);
+  const [showUrlInputIds, setShowUrlInputIds] = useState<number[]>([]);
 
   const toggleExpand = (id: number) => {
     setExpandedIds((prev) => {
       const isCurrentlyExpanded = prev.includes(id);
       if (isCurrentlyExpanded) {
-        // Si estaba en edición y cerramos detalles, desactivar edición
         setEditingIds((editPrev) => editPrev.filter((eid) => eid !== id));
         return prev.filter((x) => x !== id);
       } else {
@@ -39,10 +39,8 @@ const CardView: React.FC<CardViewProps> = ({
     setEditingIds((prev) => {
       const isCurrentlyEditing = prev.includes(id);
       if (isCurrentlyEditing) {
-        // Desactivar edición manualmente, no toca detalles
         return prev.filter((eid) => eid !== id);
       } else {
-        // Activamos edición → también abrimos detalles si no está abierto
         setExpandedIds((expandedPrev) =>
           expandedPrev.includes(id) ? expandedPrev : [...expandedPrev, id]
         );
@@ -51,7 +49,14 @@ const CardView: React.FC<CardViewProps> = ({
     });
   };
 
-  const handleCoverChange = (entry: Entry, fileOrUrl: File | string) => {
+  const toggleUrlInput = (id: number) => {
+    setShowUrlInputIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  const handleCoverChange = (entry: Entry, fileOrUrl: File | string | null) => {
+    if (!fileOrUrl) return;
     if (typeof fileOrUrl === "string") {
       updateEntry(entry.id, "cover", fileOrUrl);
     } else {
@@ -60,9 +65,23 @@ const CardView: React.FC<CardViewProps> = ({
     }
   };
 
+  const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>, entry: Entry) => {
+    const items = e.clipboardData.items;
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.startsWith("image/")) {
+        const file = item.getAsFile();
+        if (file) {
+          handleCoverChange(entry, file);
+        }
+      }
+    }
+  };
+
   const renderCard = (entry: Entry, isNew: boolean = false) => {
     const isExpanded = expandedIds.includes(entry.id);
     const isEditing = editingIds.includes(entry.id);
+    const showUrlInput = showUrlInputIds.includes(entry.id);
 
     const titleField = fields.find((f) => f.name.toLowerCase() === "titulo");
     const authorField = fields.find(
@@ -73,6 +92,7 @@ const CardView: React.FC<CardViewProps> = ({
       <div
         key={entry.id}
         className="bg-gray-800 rounded-xl p-4 shadow-md border border-gray-700 flex flex-col gap-3 transition-transform hover:scale-[1.01]"
+        onPaste={(e) => handlePaste(e, entry)}
       >
         {/* Portada */}
         <div className="relative w-full aspect-[3/4] bg-gray-700 rounded-lg overflow-hidden flex items-center justify-center">
@@ -90,14 +110,30 @@ const CardView: React.FC<CardViewProps> = ({
         {/* Editor de portada solo en modo edición o nueva entrada */}
         {(isNew || isEditing) && (
           <div className="flex gap-2 items-center text-sm text-gray-300">
-            {/* URL de portada */}
-            <input
-              type="text"
-              placeholder="Pega URL de imagen..."
-              value={entry.cover || ""}
-              onChange={(e) => handleCoverChange(entry, e.target.value)}
-              className="flex-1 bg-gray-700 p-1 rounded border border-gray-600"
-            />
+            {/* Botón para abrir input URL */}
+            <button
+              onClick={() => toggleUrlInput(entry.id)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded transition"
+              title="Añadir URL de portada"
+            >
+              🔗
+            </button>
+
+            {/* Input de URL */}
+            {showUrlInput && (
+              <input
+                type="text"
+                placeholder="Pega URL de imagen..."
+                value={entry.cover || ""}
+                onChange={(e) => handleCoverChange(entry, e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") toggleUrlInput(entry.id);
+                }}
+                onBlur={() => toggleUrlInput(entry.id)}
+                className="flex-1 bg-gray-700 p-1 rounded border border-gray-600"
+              />
+            )}
+
             {/* Botón de subida de archivo */}
             <label className="bg-gray-600 hover:bg-gray-500 text-white px-2 py-1 rounded cursor-pointer transition">
               📷
