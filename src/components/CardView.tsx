@@ -23,32 +23,15 @@ const CardView: React.FC<CardViewProps> = ({
   const [editingIds, setEditingIds] = useState<number[]>([]);
 
   const toggleExpand = (id: number) => {
-    setExpandedIds((prev) => {
-      const isCurrentlyExpanded = prev.includes(id);
-      if (isCurrentlyExpanded) {
-        // Si estaba en edición y cerramos detalles, desactivar edición
-        setEditingIds((editPrev) => editPrev.filter((eid) => eid !== id));
-        return prev.filter((x) => x !== id);
-      } else {
-        return [...prev, id];
-      }
-    });
+    setExpandedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
   };
 
   const toggleEdit = (id: number) => {
-    setEditingIds((prev) => {
-      const isCurrentlyEditing = prev.includes(id);
-      if (isCurrentlyEditing) {
-        // Desactivar edición manualmente, no toca detalles
-        return prev.filter((eid) => eid !== id);
-      } else {
-        // Activamos edición → también abrimos detalles si no está abierto
-        setExpandedIds((expandedPrev) =>
-          expandedPrev.includes(id) ? expandedPrev : [...expandedPrev, id]
-        );
-        return [...prev, id];
-      }
-    });
+    setEditingIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
   };
 
   const handleCoverChange = (entry: Entry, fileOrUrl: File | string) => {
@@ -64,12 +47,9 @@ const CardView: React.FC<CardViewProps> = ({
     const isExpanded = expandedIds.includes(entry.id);
     const isEditing = editingIds.includes(entry.id);
 
-    const titleField = fields.find(
-      (f) => f.name.toLowerCase() === "titulo"
-    );
+    const titleField = fields.find((f) => f.name.toLowerCase() === "titulo");
     const authorField = fields.find(
-      (f) =>
-        f.name.toLowerCase() === "autor" || f.name.toLowerCase() === "artista"
+      (f) => f.name.toLowerCase() === "autor" || f.name.toLowerCase() === "artista"
     );
 
     return (
@@ -90,26 +70,33 @@ const CardView: React.FC<CardViewProps> = ({
           )}
         </div>
 
-        {/* Editor de portada */}
-        <div className="flex gap-2 text-sm text-gray-300">
-          <input
-            type="text"
-            placeholder="Pega URL de imagen..."
-            value={entry.cover || ""}
-            onChange={(e) => handleCoverChange(entry, e.target.value)}
-            className="flex-1 bg-gray-700 p-1 rounded border border-gray-600"
-          />
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) => {
-              if (e.target.files && e.target.files[0]) {
-                handleCoverChange(entry, e.target.files[0]);
-              }
-            }}
-            className="text-xs text-gray-400"
-          />
-        </div>
+        {/* Editor de portada solo en modo edición o nueva entrada */}
+        {(isNew || isEditing) && (
+          <div className="flex gap-2 items-center text-sm text-gray-300">
+            {/* URL de portada */}
+            <input
+              type="text"
+              placeholder="Pega URL de imagen..."
+              value={entry.cover || ""}
+              onChange={(e) => handleCoverChange(entry, e.target.value)}
+              className="flex-1 bg-gray-700 p-1 rounded border border-gray-600"
+            />
+            {/* Botón de subida de archivo */}
+            <label className="bg-gray-600 hover:bg-gray-500 text-white px-2 py-1 rounded cursor-pointer transition">
+              📷
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  if (e.target.files && e.target.files[0]) {
+                    handleCoverChange(entry, e.target.files[0]);
+                  }
+                }}
+                className="hidden"
+              />
+            </label>
+          </div>
+        )}
 
         {/* Cabecera con título/autor */}
         <div className="flex flex-col flex-1 overflow-hidden">
