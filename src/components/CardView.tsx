@@ -83,10 +83,8 @@ const CardView: React.FC<CardViewProps> = ({
     const isEditing = editingIds.includes(entry.id);
     const showUrlInput = showUrlInputIds.includes(entry.id);
 
-    const titleField = fields.find((f) => f.name.toLowerCase() === "titulo");
-    const authorField = fields.find(
-      (f) => f.name.toLowerCase() === "autor" || f.name.toLowerCase() === "artista"
-    );
+    // Tomamos siempre los dos primeros campos como "principales"
+    const primaryFields = fields.slice(0, 2);
 
     return (
       <div
@@ -151,37 +149,22 @@ const CardView: React.FC<CardViewProps> = ({
           </div>
         )}
 
-        {/* Cabecera con título/autor */}
+        {/* Cabecera con campos principales */}
         <div className="flex flex-col flex-1 overflow-hidden">
           <span className="font-bold text-lg truncate">#{entry.id}</span>
 
-          {titleField && (
+          {primaryFields.map((f) => (
             <input
+              key={f.name}
               type="text"
               disabled={!isEditing && !isNew}
-              value={entry[titleField.name] || ""}
-              onChange={(e) =>
-                updateEntry(entry.id, titleField.name, e.target.value)
-              }
+              value={entry[f.name] || ""}
+              onChange={(e) => updateEntry(entry.id, f.name, e.target.value)}
               className={`w-full p-1 rounded bg-gray-700 border border-gray-600 ${
                 !isEditing && !isNew ? "opacity-70 cursor-default" : ""
               }`}
             />
-          )}
-
-          {authorField && (
-            <input
-              type="text"
-              disabled={!isEditing && !isNew}
-              value={entry[authorField.name] || ""}
-              onChange={(e) =>
-                updateEntry(entry.id, authorField.name, e.target.value)
-              }
-              className={`w-full p-1 rounded bg-gray-700 border border-gray-600 ${
-                !isEditing && !isNew ? "opacity-70 cursor-default" : ""
-              }`}
-            />
-          )}
+          ))}
         </div>
 
         {/* Botones principales */}
@@ -215,8 +198,7 @@ const CardView: React.FC<CardViewProps> = ({
         {isExpanded && (
           <div className="mt-3 border-t border-gray-700 pt-3">
             {fields.map((f) => {
-              if (["titulo", "autor", "artista"].includes(f.name.toLowerCase()))
-                return null;
+              if (primaryFields.includes(f)) return null;
 
               return (
                 <div key={f.name} className="mb-2">
