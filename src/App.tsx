@@ -75,20 +75,27 @@ export default function App() {
   // Funciones de entrada
   // -------------------
   const addEntry = () => {
-    if (newEntry) return; // ya hay una fila nueva editable
-    const nextId =
-      currentSection.entries.length > 0
-        ? currentSection.entries[currentSection.entries.length - 1].id + 1
-        : 1;
+  if (newEntry) return; // ya hay una fila nueva editable
+  const nextId =
+    currentSection.entries.length > 0
+      ? currentSection.entries[currentSection.entries.length - 1].id + 1
+      : 1;
 
-    const entry: Entry = { id: nextId, digital: false, físico: false } as Entry;
-    currentSection.fields.forEach((f) => {
-      if (!(f.name in entry)) entry[f.name] = f.type === "checkbox" ? false : "";
-    });
+  // Se añade el nuevo campo cover inicializado vacío
+  const entry: Entry = {
+    id: nextId,
+    digital: false,
+    físico: false,
+    cover: "",
+  } as Entry;
 
-    setNewEntry(entry);
-    setEditingId(nextId);
-  };
+  currentSection.fields.forEach((f) => {
+    if (!(f.name in entry)) entry[f.name] = f.type === "checkbox" ? false : "";
+  });
+
+  setNewEntry(entry);
+  setEditingId(nextId);
+};
 
   const confirmNewEntry = async () => {
     if (!newEntry) return;
