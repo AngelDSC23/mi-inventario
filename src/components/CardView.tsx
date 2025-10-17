@@ -17,6 +17,7 @@ const CardView: React.FC<CardViewProps> = ({
   updateEntry,
   deleteEntry,
   newEntry,
+  setNewEntry,
   confirmNewEntry,
 }) => {
   const [expandedIds, setExpandedIds] = useState<number[]>([]);
@@ -56,16 +57,27 @@ const CardView: React.FC<CardViewProps> = ({
     );
   };
 
-  // Cambiar portada con archivo o URL
+  // Función unificada para actualizar portada y guardar inmediatamente
   const handleCoverChange = (entry: Entry, fileOrUrl: File | string | null) => {
     if (!fileOrUrl) return;
+
+    const saveCover = (coverData: string) => {
+      if (entry.id === newEntry?.id) {
+        // Actualiza newEntry en tiempo real
+        setNewEntry({ ...newEntry, cover: coverData });
+      } else {
+        // Actualiza entrada existente
+        updateEntry(entry.id, "cover", coverData);
+      }
+    };
+
     if (typeof fileOrUrl === "string") {
-      updateEntry(entry.id, "cover", fileOrUrl);
+      saveCover(fileOrUrl);
     } else {
       const reader = new FileReader();
       reader.onload = (ev) => {
         if (ev.target?.result) {
-          updateEntry(entry.id, "cover", ev.target.result);
+          saveCover(ev.target.result as string);
         }
       };
       reader.readAsDataURL(fileOrUrl);
@@ -118,7 +130,6 @@ const CardView: React.FC<CardViewProps> = ({
         {/* Editor de portada */}
         {(isNew || isEditing) && (
           <div className="flex gap-2 items-center text-sm text-gray-300">
-            {/* Botón URL */}
             <button
               onClick={() => toggleUrlInput(entry.id)}
               className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded transition"
@@ -139,7 +150,6 @@ const CardView: React.FC<CardViewProps> = ({
                 className="flex-1 bg-gray-700 p-1 rounded border border-gray-600"
               />
             )}
-            {/* Subida archivo */}
             <label className="bg-gray-600 hover:bg-gray-500 text-white px-2 py-1 rounded cursor-pointer transition">
               📷
               <input
@@ -165,7 +175,10 @@ const CardView: React.FC<CardViewProps> = ({
               type="text"
               disabled={!isEditing && !isNew}
               value={entry[f.name] || ""}
-              onChange={(e) => updateEntry(entry.id, f.name, e.target.value)}
+              onChange={(e) => {
+                if (isNew) setNewEntry({ ...newEntry!, [f.name]: e.target.value });
+                else updateEntry(entry.id, f.name, e.target.value);
+              }}
               className={`w-full p-1 rounded bg-gray-700 border border-gray-600 ${
                 !isEditing && !isNew ? "opacity-70 cursor-default" : ""
               }`}
