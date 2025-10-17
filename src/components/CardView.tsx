@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Entry, Field } from "../types";
 
 interface CardViewProps {
@@ -22,8 +22,16 @@ const CardView: React.FC<CardViewProps> = ({
 }) => {
   const [expandedIds, setExpandedIds] = useState<number[]>([]);
   const [editingIds, setEditingIds] = useState<number[]>([]);
-  const [showUrlInputIds, setShowUrlInputIds] = useState<number[]>([]);
-  const [activePasteId, setActivePasteId] = useState<number | null>(null);
+  const [showUrlInputIds, setShowUrlInputIds] = useState<number[]>(newEntry ? [newEntry.id] : []);
+  const [activePasteId, setActivePasteId] = useState<number | null>(newEntry ? newEntry.id : null);
+
+  // Mostrar input de URL automáticamente al crear nueva entrada
+  useEffect(() => {
+    if (newEntry) {
+      setShowUrlInputIds([newEntry.id]);
+      setActivePasteId(newEntry.id);
+    }
+  }, [newEntry]);
 
   const toggleExpand = (id: number) => {
     setExpandedIds((prev) => {
@@ -57,16 +65,13 @@ const CardView: React.FC<CardViewProps> = ({
     );
   };
 
-  // Función unificada para actualizar portada y guardar inmediatamente
   const handleCoverChange = (entry: Entry, fileOrUrl: File | string | null) => {
     if (!fileOrUrl) return;
 
     const saveCover = (coverData: string) => {
       if (entry.id === newEntry?.id) {
-        // Actualiza newEntry en tiempo real
         setNewEntry({ ...newEntry, cover: coverData });
       } else {
-        // Actualiza entrada existente
         updateEntry(entry.id, "cover", coverData);
       }
     };
@@ -84,7 +89,6 @@ const CardView: React.FC<CardViewProps> = ({
     }
   };
 
-  // Ctrl+V directo sobre tarjeta activa
   const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
     if (activePasteId === null) return;
     const items = e.clipboardData.items;
@@ -130,26 +134,15 @@ const CardView: React.FC<CardViewProps> = ({
         {/* Editor de portada */}
         {(isNew || isEditing) && (
           <div className="flex gap-2 items-center text-sm text-gray-300">
-            <button
-              onClick={() => toggleUrlInput(entry.id)}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded transition"
-              title="Añadir URL de portada"
-            >
-              🔗
-            </button>
-            {showUrlInput && (
-              <input
-                type="text"
-                placeholder="Pega URL de imagen..."
-                value={entry.cover || ""}
-                onChange={(e) => handleCoverChange(entry, e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") toggleUrlInput(entry.id);
-                }}
-                onBlur={() => toggleUrlInput(entry.id)}
-                className="flex-1 bg-gray-700 p-1 rounded border border-gray-600"
-              />
-            )}
+            <input
+              type="text"
+              placeholder="Pega URL de imagen..."
+              value={entry.cover || ""}
+              onChange={(e) => handleCoverChange(entry, e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") toggleUrlInput(entry.id); }}
+              onBlur={() => toggleUrlInput(entry.id)}
+              className="flex-1 bg-gray-700 p-1 rounded border border-gray-600"
+            />
             <label className="bg-gray-600 hover:bg-gray-500 text-white px-2 py-1 rounded cursor-pointer transition">
               📷
               <input
