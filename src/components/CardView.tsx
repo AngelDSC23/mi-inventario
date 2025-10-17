@@ -22,11 +22,12 @@ const CardView: React.FC<CardViewProps> = ({
   const [expandedIds, setExpandedIds] = useState<number[]>([]);
   const [editingIds, setEditingIds] = useState<number[]>([]);
   const [showUrlInputIds, setShowUrlInputIds] = useState<number[]>([]);
+  const [activePasteId, setActivePasteId] = useState<number | null>(null);
 
   const toggleExpand = (id: number) => {
     setExpandedIds((prev) => {
-      const isCurrentlyExpanded = prev.includes(id);
-      if (isCurrentlyExpanded) {
+      const isExpanded = prev.includes(id);
+      if (isExpanded) {
         setEditingIds((editPrev) => editPrev.filter((eid) => eid !== id));
         return prev.filter((x) => x !== id);
       } else {
@@ -37,8 +38,8 @@ const CardView: React.FC<CardViewProps> = ({
 
   const toggleEdit = (id: number) => {
     setEditingIds((prev) => {
-      const isCurrentlyEditing = prev.includes(id);
-      if (isCurrentlyEditing) {
+      const isEditing = prev.includes(id);
+      if (isEditing) {
         return prev.filter((eid) => eid !== id);
       } else {
         setExpandedIds((expandedPrev) =>
@@ -55,7 +56,7 @@ const CardView: React.FC<CardViewProps> = ({
     );
   };
 
-  // Manejo de portada (archivo o URL)
+  // Cambiar portada con archivo o URL
   const handleCoverChange = (entry: Entry, fileOrUrl: File | string | null) => {
     if (!fileOrUrl) return;
     if (typeof fileOrUrl === "string") {
@@ -71,15 +72,17 @@ const CardView: React.FC<CardViewProps> = ({
     }
   };
 
-  // Ctrl+V directo
-  const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>, entry: Entry) => {
+  // Ctrl+V directo sobre tarjeta activa
+  const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
+    if (activePasteId === null) return;
     const items = e.clipboardData.items;
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
       if (item.type.startsWith("image/")) {
         const file = item.getAsFile();
         if (file) {
-          handleCoverChange(entry, file);
+          const entry = entries.find((ent) => ent.id === activePasteId) || newEntry;
+          if (entry) handleCoverChange(entry, file);
         }
       }
     }
@@ -90,14 +93,14 @@ const CardView: React.FC<CardViewProps> = ({
     const isEditing = editingIds.includes(entry.id);
     const showUrlInput = showUrlInputIds.includes(entry.id);
 
-    // Mostrar campos principales según orden
     const mainFields = fields.slice(0, 2);
 
     return (
       <div
         key={entry.id}
         className="bg-gray-800 rounded-xl p-4 shadow-md border border-gray-700 flex flex-col gap-3 transition-transform hover:scale-[1.01]"
-        onPaste={(e) => handlePaste(e, entry)}
+        onClick={() => setActivePasteId(entry.id)}
+        onPaste={handlePaste}
       >
         {/* Portada */}
         <div className="relative w-full aspect-[3/4] bg-gray-700 rounded-lg overflow-hidden flex items-center justify-center">
@@ -202,7 +205,6 @@ const CardView: React.FC<CardViewProps> = ({
           <div className="mt-3 border-t border-gray-700 pt-3">
             {fields.map((f) => {
               if (mainFields.includes(f)) return null;
-
               return (
                 <div key={f.name} className="mb-2">
                   <label className="block text-sm text-gray-400 mb-1 capitalize">
