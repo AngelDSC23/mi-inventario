@@ -1,11 +1,11 @@
 export interface Entry {
   id: number;
+  cover?: string; // NUEVO: campo opcional para portada, exclusivo del modo tarjetas
   [key: string]: any;
   digital: boolean;
   físico: boolean;
 }
 
-// Nuevo tipo de campo
 export type FieldType = "text" | "checkbox";
 
 export interface Field {
@@ -15,11 +15,6 @@ export interface Field {
 
 export interface Section {
   name: string;
-  fields: Field[];       // ahora es un array de objetos con tipo
+  fields: Field[];
   entries: Entry[];
-
-  // Las propiedades de vista y filtros se eliminarán de aquí
-  // defaultView: "table" | "card";
-  // includeDigital: boolean;
-  // includeFísico: boolean;
 }
