@@ -1,166 +1,254 @@
 import React, { useState } from "react";
+import { Entry, Section, Field } from "./types";
 import Sidebar from "./components/Sidebar";
 import TableView from "./components/TableView";
 import CardView from "./components/CardView";
 import SettingsPanel from "./components/SettingsPanel";
 import SectionEditorModal from "./components/SectionEditorModal";
 
-export interface Entry {
-  id: number;
-  [key: string]: string | boolean | number;
-}
-
-export interface Field {
-  name: string;
-  type: "text" | "checkbox";
-}
-
-export interface Section {
-  name: string;
-  fields: Field[];
-  entries: Entry[];
-}
-
 const App: React.FC = () => {
+  /** -----------------------------
+   *   ESTADO PRINCIPAL
+   *  ----------------------------- */
   const [sections, setSections] = useState<Section[]>([
     {
       name: "General",
-      fields: [
-        { name: "título", type: "text" },
-        { name: "digital", type: "checkbox" },
-        { name: "físico", type: "checkbox" },
-      ],
+      fields: [{ name: "Título", type: "text" }],
       entries: [],
     },
   ]);
 
   const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
-  const [isTableView, setIsTableView] = useState(true);
+  const [viewMode, setViewMode] = useState<"table" | "cards">("table");
   const [showSettings, setShowSettings] = useState(false);
   const [showSectionEditor, setShowSectionEditor] = useState(false);
+  const [selectedFieldIndex, setSelectedFieldIndex] = useState<number | null>(null);
 
-  const [newEntry, setNewEntry] = useState<Entry | null>(null);
+  // Estados para manejo de entradas
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [tempEntry, setTempEntry] = useState<Entry | null>(null);
 
   const currentSection = sections[currentSectionIndex];
 
-  // 👉 Añadir nueva entrada temporal
-  const handleAddEntry = () => {
-    if (newEntry) return; // evita duplicados
-    const empty: Entry = { id: Date.now() };
-    currentSection.fields.forEach((f) => {
-      empty[f.name] = f.type === "checkbox" ? false : "";
-    });
-    setNewEntry(empty);
+  /** -----------------------------
+   *   SECCIONES
+   *  ----------------------------- */
+  const addSection = (name: string) => {
+    if (!name.trim()) return;
+    setSections((prev) => [...prev, { name, fields: [], entries: [] }]);
   };
 
-  // 👉 Confirmar entrada nueva
-  const confirmNewEntry = () => {
-    if (!newEntry) return;
-    const updatedSections = [...sections];
-    updatedSections[currentSectionIndex].entries.push(newEntry);
-    setSections(updatedSections);
-    setNewEntry(null);
-  };
-
-  // 👉 Actualizar campos de entrada existente o nueva
-  const updateEntry = (id: number, field: string, value: any) => {
-    if (newEntry && id === newEntry.id) {
-      setNewEntry({ ...newEntry, [field]: value });
-      return;
+  const deleteSection = (index: number) => {
+    setSections((prev) => prev.filter((_, i) => i !== index));
+    if (currentSectionIndex >= index && currentSectionIndex > 0) {
+      setCurrentSectionIndex(currentSectionIndex - 1);
     }
+  };
 
-    const updatedSections = [...sections];
-    const entries = updatedSections[currentSectionIndex].entries.map((e) =>
-      e.id === id ? { ...e, [field]: value } : e
+  const renameSection = (index: number, newName: string) => {
+    setSections((prev) =>
+      prev.map((sec, i) => (i === index ? { ...sec, name: newName } : sec))
     );
-    updatedSections[currentSectionIndex].entries = entries;
-    setSections(updatedSections);
   };
 
-  // 👉 Eliminar entrada (o cancelar nueva)
-  const deleteEntry = (id: number) => {
-    if (newEntry && id === newEntry.id) {
-      setNewEntry(null);
-      return;
-    }
-    const updatedSections = [...sections];
-    updatedSections[currentSectionIndex].entries = updatedSections[
-      currentSectionIndex
-    ].entries.filter((e) => e.id !== id);
-    setSections(updatedSections);
+  const moveSection = (index: number, direction: "up" | "down") => {
+    setSections((prev) => {
+      const updated = [...prev];
+      const target = direction === "up" ? index - 1 : index + 1;
+      if (target < 0 || target >= updated.length) return prev;
+      [updated[index], updated[target]] = [updated[target], updated[index]];
+      return updated;
+    });
   };
 
-  // 👉 Ajustes y apartados
-  const handleEditSections = () => setShowSectionEditor(true);
-  const handleToggleSettings = () => setShowSettings((prev) => !prev);
+  /** -----------------------------
+   *   CAMPOS (FIELDS)
+   *  ----------------------------- */
+  const addField = (field: Field) => {
+    setSections((prev) => {
+      const updated = [...prev];
+      updated[currentSectionIndex] = {
+        ...updated[currentSectionIndex],
+        fields: [...updated[currentSectionIndex].fields, field],
+      };
+      return updated;
+    });
+  };
 
+  const deleteField = () => {
+    if (selectedFieldIndex === null) return;
+    setSections((prev) => {
+      const updated = [...prev];
+      const fields = [...updated[currentSectionIndex].fields];
+      fields.splice(selectedFieldIndex, 1);
+      updated[currentSectionIndex] = { ...updated[currentSectionIndex], fields };
+      return updated;
+    });
+    setSelectedFieldIndex(null);
+  };
+
+  const moveField = (direction: "left" | "right") => {
+    if (selectedFieldIndex === null) return;
+    setSections((prev) => {
+      const updated = [...prev];
+      const fields = [...updated[currentSectionIndex].fields];
+      const target =
+        direction === "left"
+          ? selectedFieldIndex - 1
+          : selectedFieldIndex + 1;
+      if (target < 0 || target >= fields.length) return prev;
+      [fields[selectedFieldIndex], fields[target]] = [
+        fields[target],
+        fields[selectedFieldIndex],
+      ];
+      updated[currentSectionIndex] = { ...updated[currentSectionIndex], fields };
+      return updated;
+    });
+  };
+
+  const updateField = (index: number, updates: Partial<Field>) => {
+    setSections((prev) => {
+      const updated = [...prev];
+      const section = updated[currentSectionIndex];
+      const fields = [...section.fields];
+      fields[index] = { ...fields[index], ...updates };
+      updated[currentSectionIndex] = { ...section, fields };
+      return updated;
+    });
+  };
+
+  /** -----------------------------
+   *   ENTRADAS (ENTRIES)
+   *  ----------------------------- */
+  const handleAddEntry = () => {
+    if (tempEntry) return; // evitar múltiples temporales
+    const newEntry: Entry = Object.fromEntries(
+      currentSection.fields.map((f) => [f.name, f.type === "checkbox" ? false : ""])
+    );
+    setTempEntry(newEntry);
+    setEditingId(Date.now());
+  };
+
+  const handleConfirmEntry = (confirmed: Entry) => {
+    setSections((prev) => {
+      const updated = [...prev];
+      const entries = [...updated[currentSectionIndex].entries, confirmed];
+      updated[currentSectionIndex] = { ...updated[currentSectionIndex], entries };
+      return updated;
+    });
+    setTempEntry(null);
+    setEditingId(null);
+  };
+
+  const handleUpdateEntry = (index: number, field: string, value: any) => {
+    setSections((prev) => {
+      const updated = [...prev];
+      const entries = [...updated[currentSectionIndex].entries];
+      entries[index] = { ...entries[index], [field]: value };
+      updated[currentSectionIndex] = { ...updated[currentSectionIndex], entries };
+      return updated;
+    });
+  };
+
+  const handleDeleteEntry = (index: number) => {
+    setSections((prev) => {
+      const updated = [...prev];
+      const entries = updated[currentSectionIndex].entries.filter(
+        (_, i) => i !== index
+      );
+      updated[currentSectionIndex] = { ...updated[currentSectionIndex], entries };
+      return updated;
+    });
+  };
+
+  /** -----------------------------
+   *   RENDER
+   *  ----------------------------- */
   return (
-    <div className="flex h-screen bg-gray-900 text-gray-100">
+    <div className="flex h-screen bg-gray-900 text-white">
       <Sidebar
         sections={sections}
         currentSectionIndex={currentSectionIndex}
         setCurrentSectionIndex={setCurrentSectionIndex}
-        onEditSections={handleEditSections}
+        onEditSections={() => setShowSectionEditor(true)}
+        onToggleSettings={() => setShowSettings((p) => !p)}
       />
 
-      <main className="flex-1 p-4 overflow-auto">
-        {/* Header superior con botones */}
+      <div className="flex-1 flex flex-col p-4 overflow-hidden">
+        {/* Header */}
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold">{currentSection.name}</h2>
+          <h1 className="text-2xl font-semibold">{currentSection.name}</h1>
           <div className="flex gap-2">
             <button
-              onClick={() => setIsTableView((prev) => !prev)}
+              onClick={() =>
+                setViewMode(viewMode === "table" ? "cards" : "table")
+              }
               className="bg-gray-700 px-3 py-1 rounded hover:bg-gray-600"
             >
-              {isTableView ? "📇 Tarjetas" : "📋 Tabla"}
+              {viewMode === "table" ? "🔳 Vista tarjetas" : "📋 Vista tabla"}
             </button>
             <button
-              onClick={handleAddEntry}
-              className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
-            >
-              ➕ Añadir entrada
-            </button>
-            <button
-              onClick={handleToggleSettings}
+              onClick={() => setShowSettings((s) => !s)}
               className="bg-gray-700 px-3 py-1 rounded hover:bg-gray-600"
             >
               ⚙️ Ajustes
             </button>
+            <button
+              onClick={handleAddEntry}
+              className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded"
+            >
+              ➕ Añadir entrada
+            </button>
           </div>
         </div>
 
-        {/* Vistas dinámicas */}
-        {isTableView ? (
-          <TableView
-            entries={currentSection.entries}
-            fields={currentSection.fields}
-            updateEntry={updateEntry}
-            deleteEntry={deleteEntry}
-            newEntry={newEntry}
-            confirmNewEntry={confirmNewEntry}
-            setNewEntry={setNewEntry}
-          />
-        ) : (
-          <CardView
-            entries={currentSection.entries}
-            fields={currentSection.fields}
-            updateEntry={updateEntry}
-            deleteEntry={deleteEntry}
-            newEntry={newEntry}
-            confirmNewEntry={confirmNewEntry}
-            setNewEntry={setNewEntry}
-          />
-        )}
-      </main>
+        {/* Vista principal */}
+        <div className="flex-1 overflow-y-auto">
+          {viewMode === "table" ? (
+            <TableView
+              section={currentSection}
+              editingId={editingId}
+              tempEntry={tempEntry}
+              onConfirmEntry={handleConfirmEntry}
+              onUpdateEntry={handleUpdateEntry}
+              onDeleteEntry={handleDeleteEntry}
+            />
+          ) : (
+            <CardView
+              section={currentSection}
+              editingId={editingId}
+              tempEntry={tempEntry}
+              onConfirmEntry={handleConfirmEntry}
+              onUpdateEntry={handleUpdateEntry}
+              onDeleteEntry={handleDeleteEntry}
+            />
+          )}
+        </div>
+      </div>
 
+      {/* Panel lateral de configuración */}
       {showSettings && (
-        <SettingsPanel onClose={handleToggleSettings} section={currentSection} />
+        <div className="w-80 bg-gray-850 p-4 border-l border-gray-700 overflow-y-auto">
+          <SettingsPanel
+            currentSection={currentSection}
+            selectedFieldIndex={selectedFieldIndex}
+            setSelectedFieldIndex={setSelectedFieldIndex}
+            addField={addField}
+            deleteField={deleteField}
+            moveField={moveField}
+            updateField={updateField}
+          />
+        </div>
       )}
 
+      {/* Modal de edición de secciones */}
       {showSectionEditor && (
         <SectionEditorModal
           sections={sections}
-          setSections={setSections}
+          addSection={addSection}
+          deleteSection={deleteSection}
+          renameSection={renameSection}
+          moveSection={moveSection}
           onClose={() => setShowSectionEditor(false)}
         />
       )}
