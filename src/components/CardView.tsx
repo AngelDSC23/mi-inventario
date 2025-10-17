@@ -55,16 +55,23 @@ const CardView: React.FC<CardViewProps> = ({
     );
   };
 
+  // Manejo de portada (archivo o URL)
   const handleCoverChange = (entry: Entry, fileOrUrl: File | string | null) => {
     if (!fileOrUrl) return;
     if (typeof fileOrUrl === "string") {
       updateEntry(entry.id, "cover", fileOrUrl);
     } else {
-      const url = URL.createObjectURL(fileOrUrl);
-      updateEntry(entry.id, "cover", url);
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        if (ev.target?.result) {
+          updateEntry(entry.id, "cover", ev.target.result);
+        }
+      };
+      reader.readAsDataURL(fileOrUrl);
     }
   };
 
+  // Ctrl+V directo
   const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>, entry: Entry) => {
     const items = e.clipboardData.items;
     for (let i = 0; i < items.length; i++) {
@@ -83,8 +90,8 @@ const CardView: React.FC<CardViewProps> = ({
     const isEditing = editingIds.includes(entry.id);
     const showUrlInput = showUrlInputIds.includes(entry.id);
 
-    // Tomamos siempre los dos primeros campos como "principales"
-    const primaryFields = fields.slice(0, 2);
+    // Mostrar campos principales según orden
+    const mainFields = fields.slice(0, 2);
 
     return (
       <div
@@ -105,10 +112,10 @@ const CardView: React.FC<CardViewProps> = ({
           )}
         </div>
 
-        {/* Editor de portada solo en modo edición o nueva entrada */}
+        {/* Editor de portada */}
         {(isNew || isEditing) && (
           <div className="flex gap-2 items-center text-sm text-gray-300">
-            {/* Botón para abrir input URL */}
+            {/* Botón URL */}
             <button
               onClick={() => toggleUrlInput(entry.id)}
               className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded transition"
@@ -116,8 +123,6 @@ const CardView: React.FC<CardViewProps> = ({
             >
               🔗
             </button>
-
-            {/* Input de URL */}
             {showUrlInput && (
               <input
                 type="text"
@@ -131,8 +136,7 @@ const CardView: React.FC<CardViewProps> = ({
                 className="flex-1 bg-gray-700 p-1 rounded border border-gray-600"
               />
             )}
-
-            {/* Botón de subida de archivo */}
+            {/* Subida archivo */}
             <label className="bg-gray-600 hover:bg-gray-500 text-white px-2 py-1 rounded cursor-pointer transition">
               📷
               <input
@@ -152,8 +156,7 @@ const CardView: React.FC<CardViewProps> = ({
         {/* Cabecera con campos principales */}
         <div className="flex flex-col flex-1 overflow-hidden">
           <span className="font-bold text-lg truncate">#{entry.id}</span>
-
-          {primaryFields.map((f) => (
+          {mainFields.map((f) => (
             <input
               key={f.name}
               type="text"
@@ -198,7 +201,7 @@ const CardView: React.FC<CardViewProps> = ({
         {isExpanded && (
           <div className="mt-3 border-t border-gray-700 pt-3">
             {fields.map((f) => {
-              if (primaryFields.includes(f)) return null;
+              if (mainFields.includes(f)) return null;
 
               return (
                 <div key={f.name} className="mb-2">
