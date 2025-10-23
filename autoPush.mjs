@@ -9,7 +9,7 @@ const watchFolders = ["src", "public"];
 const ignoreList = ["node_modules", "dist", ".env", ".git"];
 
 // Debounce en milisegundos (tiempo mínimo entre commits)
-const DEBOUNCE_TIME = 3000; // 3 segundos
+const DEBOUNCE_TIME = 5000; // 3 segundos
 
 let timeoutId = null;
 
